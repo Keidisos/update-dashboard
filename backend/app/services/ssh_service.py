@@ -311,9 +311,9 @@ class SSHService:
         """Apply updates on Debian/Ubuntu."""
         if packages:
             pkg_list = " ".join(packages)
-            cmd = f"DEBIAN_FRONTEND=noninteractive apt-get install -y {pkg_list}"
+            cmd = f"apt-get install -y -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' {pkg_list}"
         else:
-            cmd = "DEBIAN_FRONTEND=noninteractive apt-get upgrade -y"
+            cmd = "apt-get upgrade -y -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'"
             
         code, stdout, stderr = await self.run_command(cmd, sudo=True, timeout=600)
         
