@@ -179,16 +179,24 @@ async def get_host_status(host_id: int, db: AsyncSession = Depends(get_db)):
             detail=f"Host {host_id} not found"
         )
     
-    # Decrypt SSH key if present
+    # Decrypt SSH credentials if present
     ssh_key = None
+    ssh_password = None
+    
     if host.ssh_key_encrypted:
         try:
             ssh_key = decrypt_value(host.ssh_key_encrypted, settings.secret_key)
+        except Exception as e:
+            pass
+            
+    if host.ssh_password_encrypted:
+        try:
+            ssh_password = decrypt_value(host.ssh_password_encrypted, settings.secret_key)
         except Exception:
             pass
     
     # Try to connect
-    docker_service = DockerService(host, ssh_key)
+    docker_service = DockerService(host, ssh_key, ssh_password)
     
     try:
         client = await docker_service.connect()

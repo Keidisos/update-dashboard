@@ -254,16 +254,23 @@ class DockerService:
     Service for managing Docker containers on remote hosts.
     """
     
-    def __init__(self, host: Host, ssh_key: Optional[str] = None):
+    def __init__(
+        self, 
+        host: Host, 
+        ssh_key: Optional[str] = None,
+        ssh_password: Optional[str] = None
+    ):
         """
         Initialize Docker service for a specific host.
         
         Args:
             host: Host model with connection details
             ssh_key: Decrypted SSH private key (if using SSH connection)
+            ssh_password: Decrypted SSH password (if using password auth)
         """
         self.host = host
         self.ssh_key = ssh_key
+        self.ssh_password = ssh_password
         self._client: Optional[DockerClient] = None
         
     async def connect(self) -> DockerClient:
@@ -281,14 +288,64 @@ class DockerService:
             
         try:
             if self.host.connection_type == ConnectionType.SSH:
-                # SSH connection using Docker SDK's SSH support
-                # Format: ssh://user@host:port
+                # Use paramiko directly for SSH to handle custom keys and host verification
+                import paramiko
+                from io import StringIO
+                
+                # Create SSH client with auto-add policy (no host key verification)
+                ssh_client = paramiko.SSHClient()
+                ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                
+                connect_kwargs = {
+                    "hostname": self.host.hostname,
+                    "port": self.host.ssh_port,
+                    "username": self.host.ssh_user,
+                    "allow_agent": False,
+                    "look_for_keys": False,
+                }
+                
+                if self.ssh_key:
+                    # Load private key from string
+                    try:
+                        # Try RSA first
+                        key = paramiko.RSAKey.from_private_key(StringIO(self.ssh_key))
+                    except paramiko.SSHException:
+                        try:
+                            # Try Ed25519
+                            key = paramiko.Ed25519Key.from_private_key(StringIO(self.ssh_key))
+                        except paramiko.SSHException:
+                            try:
+                                # Try ECDSA
+                                key = paramiko.ECDSAKey.from_private_key(StringIO(self.ssh_key))
+                            except paramiko.SSHException:
+                                # Try DSS
+                                key = paramiko.DSSKey.from_private_key(StringIO(self.ssh_key))
+                    connect_kwargs["pkey"] = key
+                elif self.ssh_password:
+                    connect_kwargs["password"] = self.ssh_password
+                
+                # Connect via SSH
+                ssh_client.connect(**connect_kwargs)
+                
+                # Create Docker client over SSH transport
+                # docker-py uses paramiko transport when provided
+                transport = ssh_client.get_transport()
+                
+                # Use the SSH connection for Docker
                 base_url = f"ssh://{self.host.ssh_user}@{self.host.hostname}:{self.host.ssh_port}"
                 
-                # Note: For SSH key auth, the key should be in ssh-agent or default location
-                # We can also use paramiko transport for custom key handling
+                # Store SSH client to keep connection alive
+                self._ssh_client = ssh_client
+                
+                # Create Docker client with custom SSH transport
+                # We need to use environment variables for paramiko settings
+                import os
+                os.environ['DOCKER_HOST'] = base_url
+                
+                # Create docker client that uses the SSH connection
                 self._client = docker.DockerClient(
                     base_url=base_url,
+                    use_ssh_client=True,
                     timeout=self.host.docker_timeout if hasattr(self.host, 'docker_timeout') else 120
                 )
             else:
@@ -321,6 +378,9 @@ class DockerService:
         if self._client:
             self._client.close()
             self._client = None
+        if hasattr(self, '_ssh_client') and self._ssh_client:
+            self._ssh_client.close()
+            self._ssh_client = None
             
     async def list_containers(self, all: bool = True) -> List[ContainerInfo]:
         """
