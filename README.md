@@ -65,23 +65,39 @@ echo "update-manager ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt" | sudo 
 sudo chmod 440 /etc/sudoers.d/update-manager
 ```
 
-### 3. Installer la clé SSH (Méthode Manuelle)
-Vous devez coller la clé publique de votre dashboard (ou votre clé perso) sur le serveur distant.
+### 3. Installer la clé SSH
+
+Cette étape se fait en deux temps : générer une clé, et l'installer sur le serveur distant.
+
+**A. Sur votre PC ou le Serveur Dashboard (Génération de la clé)**
+Générez une paire de clés SSH dédiée :
+```bash
+# Générer la clé (appuyez sur Entrée pour ne pas mettre de passphrase)
+ssh-keygen -t ed25519 -C "update-dashboard" -f ./dashboard-key -q -N ""
+
+# Afficher la clé PRIVÉE (à copier dans le dashboard plus tard)
+cat ./dashboard-key
+
+# Afficher la clé PUBLIQUE (à copier sur le serveur distant)
+cat ./dashboard-key.pub
+```
+
+**B. Sur le Serveur Distant (Installation de la clé publique)**
+En tant que **root** (puisque `su - update-manager` peut échouer sur certains systèmes), exécutez ceci :
 
 ```bash
-# Passer en utilisateur update-manager
-sudo su - update-manager
+# 1. Créer le dossier .ssh pour l'utilisateur
+mkdir -p /home/update-manager/.ssh
 
-# Créer le dossier ssh
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
+# 2. Créer le fichier authorized_keys
+nano /home/update-manager/.ssh/authorized_keys
+# (🔴 COLLEZ ICI LE CONTENU DE VOTRE CLÉ PUBLIQUE 'dashboard-key.pub')
+# (Sauvegardez avec Ctrl+O, Entrée, Ctrl+X)
 
-# Créer le fichier authorized_keys et y coller VOTRE CLÉ PUBLIQUE
-nano ~/.ssh/authorized_keys
-# (Collez votre clé publique ed25519 ou rsa ici, sauvegardez avec Ctrl+O, Entrée, Ctrl+X)
-
-# Sécuriser les droits
-chmod 600 ~/.ssh/authorized_keys
+# 3. Définir les bonnes permissions et le propriétaire (CRITIQUE)
+chmod 700 /home/update-manager/.ssh
+chmod 600 /home/update-manager/.ssh/authorized_keys
+chown -R update-manager:update-manager /home/update-manager/.ssh
 ```
 
 ### 4. Ajouter dans le Dashboard
