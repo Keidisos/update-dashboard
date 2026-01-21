@@ -389,6 +389,129 @@ class DockerService:
         if self._ssh_client:
             self._ssh_client.close()
             self._ssh_client = None
+            
+    async def list_containers(self, all: bool = True) -> List[ContainerInfo]:
+        """
+        List all containers on the host.
+        
+        Args:
+            all: Include stopped containers
+            
+        Returns:
+            List of ContainerInfo objects
+        """
+        client = await self.connect()
+        containers = client.containers.list(all=all)
+        
+        result = []
+        for container in containers:
+            info = self._container_to_info(container)
+            result.append(info)
+            
+        return result
+        
+    async def get_container(self, container_id: str) -> ContainerInfo:
+        """Get detailed information about a specific container."""
+        client = await self.connect()
+        container = client.containers.get(container_id)
+        return self._container_to_info(container)
+    
+    async def get_image_digest(self, image_name: str) -> Optional[str]:
+        """Get the digest of a local image."""
+        client = await self.connect()
+        try:
+            image = client.images.get(image_name)
+            digests = image.attrs.get("RepoDigests", [])
+            if digests:
+                return digests[0].split("@")[-1]
+            return None
+        except NotFound:
+            return None
+    
+    def _container_to_info(self, container) -> ContainerInfo:
+        """Convert Docker container to ContainerInfo schema."""
+        attrs = container.attrs
+        config = attrs.get("Config", {})
+        host_config = attrs.get("HostConfig", {})
+        network_settings = attrs.get("NetworkSettings", {})
+        
+        # Parse ports
+        ports = []
+        port_bindings = host_config.get("PortBindings") or {}
+        for container_port, bindings in port_bindings.items():
+            if "/" in container_port:
+                port_num, protocol = container_port.split("/")
+            else:
+                port_num, protocol = container_port, "tcp"
+            if bindings:
+                for binding in bindings:
+                    ports.append(PortMapping(
+                        container_port=int(port_num),
+                        host_port=int(binding["HostPort"]) if binding.get("HostPort") else None,
+                        protocol=protocol,
+                        host_ip=binding.get("HostIp", "0.0.0.0")
+                    ))
+                    
+        # Parse volumes/mounts
+        volumes = []
+        mounts = attrs.get("Mounts") or []
+        for mount in mounts:
+            volumes.append(VolumeMount(
+                source=mount.get("Source", ""),
+                destination=mount.get("Destination", ""),
+                mode=mount.get("Mode", "rw"),
+                type=mount.get("Type", "bind")
+            ))
+            
+        # Parse environment
+        env_dict = {}
+        for env in config.get("Env") or []:
+            if "=" in env:
+                key, value = env.split("=", 1)
+                env_dict[key] = value
+                
+        # Parse networks
+        networks = list((network_settings.get("Networks") or {}).keys())
+        
+        # Get restart policy
+        restart = host_config.get("RestartPolicy", {})
+        restart_policy = restart.get("Name", "no")
+        if restart.get("MaximumRetryCount"):
+            restart_policy = f"{restart_policy}:{restart['MaximumRetryCount']}"
+            
+        # Determine state
+        state_str = attrs.get("State", {}).get("Status", "unknown")
+        try:
+            state = ContainerState(state_str)
+        except ValueError:
+            state = ContainerState.EXITED
+        
+        # Get container name and id
+        container_name = container.name if hasattr(container, 'name') else attrs.get("Name", "").lstrip("/")
+        container_id = container.id if hasattr(container, 'id') else attrs.get("Id", "")
+        
+        # Get created time
+        created_str = attrs.get("Created", "")
+        try:
+            created = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+        except:
+            created = datetime.utcnow()
+            
+        return ContainerInfo(
+            id=container_id,
+            name=container_name,
+            image=config.get("Image", ""),
+            image_id=attrs.get("Image", ""),
+            state=state,
+            status=container.status if hasattr(container, 'status') else state_str,
+            created=created,
+            ports=ports,
+            volumes=volumes,
+            environment=env_dict,
+            networks=networks,
+            labels=config.get("Labels") or {},
+            restart_policy=restart_policy
+        )
 
 
 class SSHDockerClient:
