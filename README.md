@@ -29,6 +29,7 @@ cd update-dashboard
 ### 2. Configuration
 Créez le fichier de configuration :
 ```bash
+mkdir -p data
 cp .env.example .env
 ```
 Ouvrez le fichier `.env` et modifiez au moins `SECRET_KEY` (utilisé pour chiffrer vos clés SSH dans la base de données).
@@ -70,7 +71,6 @@ sudo chmod 440 /etc/sudoers.d/update-manager
 Cette étape se fait en deux temps : générer une clé, et l'installer sur le serveur distant.
 
 **A. Sur votre PC ou le Serveur Dashboard (Génération de la clé)**
-Générez une paire de clés SSH dédiée :
 ```bash
 # Générer la clé (appuyez sur Entrée pour ne pas mettre de passphrase)
 ssh-keygen -t ed25519 -C "update-dashboard" -f ./dashboard-key -q -N ""
@@ -83,7 +83,6 @@ cat ./dashboard-key.pub
 ```
 
 **B. Sur le Serveur Distant (Installation de la clé publique)**
-En tant que **root** (puisque `su - update-manager` peut échouer sur certains systèmes), exécutez ceci :
 
 ```bash
 # 1. Créer le dossier .ssh pour l'utilisateur
@@ -105,5 +104,5 @@ chown -R update-manager:update-manager /home/update-manager/.ssh
 2. Menu **Hosts** > **Add Host**
 3. Remplissez :
    *   **Username**: `update-manager`
-   *   **SSH Key**: Collez votre **CLÉ PRIVÉE** correspondante
+   *   **SSH Key**: Collez votre **CLÉ PRIVÉE** correspondante (dashboard-key.pub)
 4. Sauvegardez. La connexion doit passer au vert.
