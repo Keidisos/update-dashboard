@@ -272,6 +272,8 @@ class DockerService:
         self.ssh_key = ssh_key
         self.ssh_password = ssh_password
         self._client: Optional[DockerClient] = None
+        self._ssh_client = None
+        self._temp_socket_path = None
         
     async def connect(self) -> DockerClient:
         """
@@ -288,9 +290,11 @@ class DockerService:
             
         try:
             if self.host.connection_type == ConnectionType.SSH:
-                # Use paramiko directly for SSH to handle custom keys and host verification
+                # Use paramiko to execute docker commands over SSH
                 import paramiko
                 from io import StringIO
+                import tempfile
+                import os
                 
                 # Create SSH client with auto-add policy (no host key verification)
                 ssh_client = paramiko.SSHClient()
@@ -302,52 +306,36 @@ class DockerService:
                     "username": self.host.ssh_user,
                     "allow_agent": False,
                     "look_for_keys": False,
+                    "timeout": 30,
                 }
                 
                 if self.ssh_key:
                     # Load private key from string
-                    try:
-                        # Try RSA first
-                        key = paramiko.RSAKey.from_private_key(StringIO(self.ssh_key))
-                    except paramiko.SSHException:
-                        try:
-                            # Try Ed25519
-                            key = paramiko.Ed25519Key.from_private_key(StringIO(self.ssh_key))
-                        except paramiko.SSHException:
-                            try:
-                                # Try ECDSA
-                                key = paramiko.ECDSAKey.from_private_key(StringIO(self.ssh_key))
-                            except paramiko.SSHException:
-                                # Try DSS
-                                key = paramiko.DSSKey.from_private_key(StringIO(self.ssh_key))
+                    key = self._load_private_key(self.ssh_key)
                     connect_kwargs["pkey"] = key
                 elif self.ssh_password:
                     connect_kwargs["password"] = self.ssh_password
+                else:
+                    raise DockerException("No SSH credentials provided")
                 
                 # Connect via SSH
+                logger.info(f"Connecting to {self.host.hostname}:{self.host.ssh_port} as {self.host.ssh_user}")
                 ssh_client.connect(**connect_kwargs)
-                
-                # Create Docker client over SSH transport
-                # docker-py uses paramiko transport when provided
-                transport = ssh_client.get_transport()
-                
-                # Use the SSH connection for Docker
-                base_url = f"ssh://{self.host.ssh_user}@{self.host.hostname}:{self.host.ssh_port}"
-                
-                # Store SSH client to keep connection alive
                 self._ssh_client = ssh_client
                 
-                # Create Docker client with custom SSH transport
-                # We need to use environment variables for paramiko settings
-                import os
-                os.environ['DOCKER_HOST'] = base_url
+                # Test Docker access via SSH
+                stdin, stdout, stderr = ssh_client.exec_command("docker version --format '{{.Server.Version}}'")
+                exit_code = stdout.channel.recv_exit_status()
+                if exit_code != 0:
+                    error = stderr.read().decode().strip()
+                    raise DockerException(f"Cannot access Docker on remote host: {error}")
                 
-                # Create docker client that uses the SSH connection
-                self._client = docker.DockerClient(
-                    base_url=base_url,
-                    use_ssh_client=True,
-                    timeout=self.host.docker_timeout if hasattr(self.host, 'docker_timeout') else 120
-                )
+                docker_version = stdout.read().decode().strip()
+                logger.info(f"Remote Docker version: {docker_version}")
+                
+                # Create a wrapper client that executes commands via SSH
+                self._client = SSHDockerClient(ssh_client, self.host)
+                
             else:
                 # TCP connection
                 protocol = "https" if self.host.docker_tls else "http"
@@ -355,8 +343,6 @@ class DockerService:
                 
                 tls_config = None
                 if self.host.docker_tls:
-                    # TLS configuration would go here
-                    # tls_config = docker.tls.TLSConfig(...)
                     pass
                     
                 self._client = docker.DockerClient(
@@ -364,23 +350,353 @@ class DockerService:
                     tls=tls_config
                 )
                 
-            # Verify connection
-            self._client.ping()
+                # Verify connection
+                self._client.ping()
+                
             logger.info(f"Connected to Docker on {self.host.name}")
             return self._client
             
-        except DockerException as e:
+        except Exception as e:
             logger.error(f"Failed to connect to Docker on {self.host.name}: {e}")
-            raise
+            raise DockerException(str(e))
+    
+    def _load_private_key(self, key_string: str):
+        """Load SSH private key from string, trying multiple formats."""
+        import paramiko
+        from io import StringIO
+        
+        key_types = [
+            paramiko.RSAKey,
+            paramiko.Ed25519Key,
+            paramiko.ECDSAKey,
+            paramiko.DSSKey,
+        ]
+        
+        for key_type in key_types:
+            try:
+                return key_type.from_private_key(StringIO(key_string))
+            except (paramiko.SSHException, ValueError):
+                continue
+        
+        raise DockerException("Unable to load SSH private key - unsupported format")
             
     async def disconnect(self):
         """Close Docker client connection."""
         if self._client:
-            self._client.close()
+            if hasattr(self._client, 'close'):
+                self._client.close()
             self._client = None
-        if hasattr(self, '_ssh_client') and self._ssh_client:
+        if self._ssh_client:
             self._ssh_client.close()
             self._ssh_client = None
+
+
+class SSHDockerClient:
+    """
+    A Docker client wrapper that executes Docker commands over SSH.
+    This provides compatibility with the docker-py API while using SSH.
+    """
+    
+    def __init__(self, ssh_client, host: Host):
+        self.ssh_client = ssh_client
+        self.host = host
+        self._containers = SSHContainerCollection(self)
+        self._images = SSHImageCollection(self)
+        self._networks = SSHNetworkCollection(self)
+        
+    @property
+    def containers(self):
+        return self._containers
+    
+    @property
+    def images(self):
+        return self._images
+    
+    @property
+    def networks(self):
+        return self._networks
+        
+    def ping(self) -> bool:
+        """Ping the Docker daemon."""
+        code, out, err = self._exec("docker info --format '{{.ServerVersion}}'")
+        return code == 0
+    
+    def version(self) -> Dict[str, Any]:
+        """Get Docker version info."""
+        code, out, err = self._exec("docker version --format '{{json .}}'")
+        if code != 0:
+            raise DockerException(f"Failed to get version: {err}")
+        import json
+        try:
+            data = json.loads(out)
+            return {
+                "Version": data.get("Server", {}).get("Version", "unknown"),
+                "Os": data.get("Server", {}).get("Os", "linux"),
+                "Arch": data.get("Server", {}).get("Arch", "amd64"),
+            }
+        except json.JSONDecodeError:
+            return {"Version": out.strip(), "Os": "linux", "Arch": "amd64"}
+    
+    def close(self):
+        """Close the connection."""
+        pass  # SSH client is managed by DockerService
+    
+    def _exec(self, command: str, timeout: int = 120) -> Tuple[int, str, str]:
+        """Execute a command over SSH."""
+        stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
+        exit_code = stdout.channel.recv_exit_status()
+        return exit_code, stdout.read().decode(), stderr.read().decode()
+
+
+class SSHContainerCollection:
+    """Container collection for SSH Docker client."""
+    
+    def __init__(self, client: SSHDockerClient):
+        self.client = client
+    
+    def list(self, all: bool = False) -> List:
+        """List containers."""
+        cmd = "docker ps --format '{{json .}}' --no-trunc"
+        if all:
+            cmd += " -a"
+        code, out, err = self.client._exec(cmd)
+        if code != 0:
+            raise DockerException(f"Failed to list containers: {err}")
+        
+        import json
+        containers = []
+        for line in out.strip().split('\n'):
+            if line:
+                try:
+                    data = json.loads(line)
+                    containers.append(SSHContainer(self.client, data))
+                except json.JSONDecodeError:
+                    continue
+        return containers
+    
+    def get(self, container_id: str):
+        """Get a container by ID or name."""
+        cmd = f"docker inspect {container_id}"
+        code, out, err = self.client._exec(cmd)
+        if code != 0:
+            raise NotFound(f"Container {container_id} not found")
+        
+        import json
+        data = json.loads(out)
+        if data:
+            return SSHContainer(self.client, data[0], full_attrs=True)
+        raise NotFound(f"Container {container_id} not found")
+    
+    def create(self, **kwargs) -> 'SSHContainer':
+        """Create a new container."""
+        cmd = self._build_create_command(**kwargs)
+        code, out, err = self.client._exec(cmd)
+        if code != 0:
+            raise APIError(f"Failed to create container: {err}")
+        container_id = out.strip()
+        return self.get(container_id)
+    
+    def _build_create_command(self, **kwargs) -> str:
+        """Build docker create command from kwargs."""
+        parts = ["docker create"]
+        
+        if kwargs.get("name"):
+            parts.append(f"--name {kwargs['name']}")
+        if kwargs.get("hostname"):
+            parts.append(f"--hostname {kwargs['hostname']}")
+        if kwargs.get("environment"):
+            for key, val in kwargs['environment'].items():
+                parts.append(f"-e '{key}={val}'")
+        if kwargs.get("ports"):
+            for container_port, bindings in kwargs['ports'].items():
+                if bindings:
+                    for binding in bindings:
+                        host_port = binding.get('HostPort', '')
+                        host_ip = binding.get('HostIp', '')
+                        if host_ip and host_port:
+                            parts.append(f"-p {host_ip}:{host_port}:{container_port}")
+                        elif host_port:
+                            parts.append(f"-p {host_port}:{container_port}")
+        if kwargs.get("volumes"):
+            for vol in (kwargs.get("mounts") or []):
+                src = vol.get("Source", "")
+                tgt = vol.get("Target", "")
+                if src and tgt:
+                    parts.append(f"-v {src}:{tgt}")
+        if kwargs.get("restart_policy"):
+            policy = kwargs['restart_policy']
+            name = policy.get("Name", "no")
+            if name != "no":
+                if policy.get("MaximumRetryCount"):
+                    parts.append(f"--restart {name}:{policy['MaximumRetryCount']}")
+                else:
+                    parts.append(f"--restart {name}")
+        if kwargs.get("privileged"):
+            parts.append("--privileged")
+        if kwargs.get("network"):
+            parts.append(f"--network {kwargs['network']}")
+        if kwargs.get("labels"):
+            for key, val in kwargs['labels'].items():
+                parts.append(f"--label '{key}={val}'")
+        
+        parts.append(kwargs.get("image", ""))
+        
+        if kwargs.get("command"):
+            cmd = kwargs['command']
+            if isinstance(cmd, list):
+                parts.append(" ".join(cmd))
+            else:
+                parts.append(cmd)
+        
+        return " ".join(parts)
+
+
+class SSHContainer:
+    """Container wrapper for SSH Docker client."""
+    
+    def __init__(self, client: SSHDockerClient, data: Dict, full_attrs: bool = False):
+        self.client = client
+        self._data = data
+        self._full_attrs = full_attrs
+        
+    @property
+    def id(self) -> str:
+        return self._data.get("Id") or self._data.get("ID", "")
+    
+    @property
+    def name(self) -> str:
+        name = self._data.get("Name") or self._data.get("Names", "")
+        if isinstance(name, str):
+            return name.lstrip("/")
+        return name
+    
+    @property
+    def status(self) -> str:
+        if self._full_attrs:
+            return self._data.get("State", {}).get("Status", "unknown")
+        return self._data.get("State", "unknown")
+    
+    @property
+    def attrs(self) -> Dict:
+        if not self._full_attrs:
+            self.reload()
+        return self._data
+    
+    def reload(self):
+        """Reload container info."""
+        code, out, err = self.client._exec(f"docker inspect {self.id}")
+        if code == 0:
+            import json
+            data = json.loads(out)
+            if data:
+                self._data = data[0]
+                self._full_attrs = True
+    
+    def start(self):
+        """Start the container."""
+        code, out, err = self.client._exec(f"docker start {self.id}")
+        if code != 0:
+            raise APIError(f"Failed to start container: {err}")
+    
+    def stop(self, timeout: int = 10):
+        """Stop the container."""
+        code, out, err = self.client._exec(f"docker stop -t {timeout} {self.id}")
+        if code != 0:
+            raise APIError(f"Failed to stop container: {err}")
+    
+    def remove(self, force: bool = False):
+        """Remove the container."""
+        cmd = f"docker rm {self.id}"
+        if force:
+            cmd += " -f"
+        code, out, err = self.client._exec(cmd)
+        if code != 0:
+            raise APIError(f"Failed to remove container: {err}")
+    
+    def rename(self, name: str):
+        """Rename the container."""
+        code, out, err = self.client._exec(f"docker rename {self.id} {name}")
+        if code != 0:
+            raise APIError(f"Failed to rename container: {err}")
+
+
+class SSHImageCollection:
+    """Image collection for SSH Docker client."""
+    
+    def __init__(self, client: SSHDockerClient):
+        self.client = client
+    
+    def get(self, name: str):
+        """Get an image by name."""
+        code, out, err = self.client._exec(f"docker inspect {name}")
+        if code != 0:
+            raise NotFound(f"Image {name} not found")
+        import json
+        data = json.loads(out)
+        if data:
+            return SSHImage(self.client, data[0])
+        raise NotFound(f"Image {name} not found")
+    
+    def pull(self, name: str):
+        """Pull an image."""
+        code, out, err = self.client._exec(f"docker pull {name}", timeout=600)
+        if code != 0:
+            raise APIError(f"Failed to pull image: {err}")
+        return self.get(name)
+
+
+class SSHImage:
+    """Image wrapper for SSH Docker client."""
+    
+    def __init__(self, client: SSHDockerClient, data: Dict):
+        self.client = client
+        self._data = data
+    
+    @property
+    def id(self) -> str:
+        return self._data.get("Id", "")[:12]
+    
+    @property
+    def attrs(self) -> Dict:
+        return self._data
+
+
+class SSHNetworkCollection:
+    """Network collection for SSH Docker client."""
+    
+    def __init__(self, client: SSHDockerClient):
+        self.client = client
+    
+    def get(self, name: str):
+        """Get a network by name."""
+        code, out, err = self.client._exec(f"docker network inspect {name}")
+        if code != 0:
+            raise NotFound(f"Network {name} not found")
+        import json
+        data = json.loads(out)
+        if data:
+            return SSHNetwork(self.client, data[0])
+        raise NotFound(f"Network {name} not found")
+
+
+class SSHNetwork:
+    """Network wrapper for SSH Docker client."""
+    
+    def __init__(self, client: SSHDockerClient, data: Dict):
+        self.client = client
+        self._data = data
+    
+    def connect(self, container, **kwargs):
+        """Connect a container to this network."""
+        container_id = container.id if hasattr(container, 'id') else container
+        network_name = self._data.get("Name", "")
+        cmd = f"docker network connect {network_name} {container_id}"
+        if kwargs.get("aliases"):
+            for alias in kwargs['aliases']:
+                cmd += f" --alias {alias}"
+        code, out, err = self.client._exec(cmd)
+        if code != 0:
+            raise APIError(f"Failed to connect to network: {err}")
             
     async def list_containers(self, all: bool = True) -> List[ContainerInfo]:
         """
