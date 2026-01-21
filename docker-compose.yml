@@ -8,6 +8,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: update-dashboard
+    user: "0:0" # Run as root to avoid permission issues with volumes
     ports:
       - "${PORT:-8080}:8000"
     volumes:
@@ -19,8 +20,8 @@ services:
       # Required
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production-use-random-string}
 
-      # Database
-      - DATABASE_URL=sqlite+aiosqlite:///./data/update_dashboard.db
+      # Database (use absolute path)
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/update_dashboard.db
 
       # Discord notifications (optional)
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
@@ -29,7 +30,7 @@ services:
       - DEBUG=${DEBUG:-false}
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3

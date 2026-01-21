@@ -12,9 +12,14 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# Ensure data directory exists
-data_dir = Path("./data")
-data_dir.mkdir(exist_ok=True)
+# Ensure data directory exists (use absolute path)
+# In Docker, WORKDIR is /app, so data will be at /app/data
+data_dir = Path("/app/data") if os.path.exists("/app") else Path("./data")
+try:
+    data_dir.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    # Directory might already exist with different permissions
+    pass
 
 # Create async engine
 engine = create_async_engine(
