@@ -69,15 +69,23 @@ class SSHService:
         Returns:
             SSH connection
         """
-        if self._conn is not None and not self._conn.is_closed():
-            return self._conn
+        # Check if we have an active connection
+        if self._conn is not None:
+            try:
+                # Test if connection is still alive
+                if not getattr(self._conn, '_transport', None) or self._conn._transport.is_closing():
+                    self._conn = None
+                else:
+                    return self._conn
+            except Exception:
+                self._conn = None
             
         try:
             connect_kwargs = {
                 "host": self.host.hostname,
                 "port": self.host.ssh_port,
                 "username": self.host.ssh_user,
-                "known_hosts": None,  # Disable host key checking (not recommended for production)
+                "known_hosts": None,  # Disable host key checking
             }
             
             if self.private_key:
@@ -99,7 +107,10 @@ class SSHService:
         """Close SSH connection."""
         if self._conn:
             self._conn.close()
-            await self._conn.wait_closed()
+            try:
+                await self._conn.wait_closed()
+            except Exception:
+                pass
             self._conn = None
             
     async def run_command(

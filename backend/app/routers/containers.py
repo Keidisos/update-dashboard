@@ -36,15 +36,23 @@ async def get_docker_service(host_id: int, db: AsyncSession) -> tuple[DockerServ
             detail=f"Host {host_id} not found"
         )
     
-    # Decrypt SSH key if present
+    # Decrypt SSH credentials if present
     ssh_key = None
+    ssh_password = None
+    
     if host.ssh_key_encrypted:
         try:
             ssh_key = decrypt_value(host.ssh_key_encrypted, settings.secret_key)
         except Exception:
             pass
     
-    return DockerService(host, ssh_key), host
+    if host.ssh_password_encrypted:
+        try:
+            ssh_password = decrypt_value(host.ssh_password_encrypted, settings.secret_key)
+        except Exception:
+            pass
+    
+    return DockerService(host, ssh_key, ssh_password), host
 
 
 @router.get("/{host_id}", response_model=List[ContainerInfo])
