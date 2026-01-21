@@ -1,0 +1,51 @@
+# ==============================================================================
+# Update Dashboard - Docker Compose Configuration
+# ==============================================================================
+
+services:
+  update-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: update-dashboard
+    ports:
+      - "${PORT:-8080}:8000"
+    volumes:
+      # Persistent data (SQLite database, logs)
+      - ./data:/app/data
+      # SSH keys (optional - mount your .ssh directory for SSH connections)
+      # - ~/.ssh:/app/.ssh:ro
+    environment:
+      # Required
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production-use-random-string}
+
+      # Database
+      - DATABASE_URL=sqlite+aiosqlite:///./data/update_dashboard.db
+
+      # Discord notifications (optional)
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+
+      # Debug mode (set to true for development)
+      - DEBUG=${DEBUG:-false}
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.docker.compose.project=update-dashboard"
+
+# ==============================================================================
+# Development override example (use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up)
+# ==============================================================================
+# services:
+#   update-dashboard:
+#     build:
+#       target: runtime
+#     volumes:
+#       - ./backend:/app:ro
+#     environment:
+#       - DEBUG=true
+#     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
