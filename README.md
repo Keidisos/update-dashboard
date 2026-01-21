@@ -109,135 +109,104 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 3. Créer un nouveau webhook
 4. Copier l'URL et la coller dans `DISCORD_WEBHOOK_URL`
 
-## 🖥️ Déploiement sur un Serveur
+## 🖥️ Guide de Déploiement
 
-### Avec Docker Compose (Recommandé)
+### 1. Installation sur votre serveur (Hôte Dashboard)
+
+Ce serveur hébergera l'interface web **Update Dashboard**.
+
+**Prérequis :** Docker et Docker Compose installés (`curl -fsSL https://get.docker.com | sh`).
 
 ```bash
-# Sur votre serveur (SSH)
-ssh user@votre-serveur
-
-# Installer Docker si nécessaire
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# Créer le répertoire
-sudo mkdir -p /opt/update-dashboard
+# 1. Créer le répertoire du projet
+mkdir -p /opt/update-dashboard
 cd /opt/update-dashboard
 
-# Créer docker-compose.yml
-sudo tee docker-compose.yml > /dev/null << 'EOF'
+# 2. Créer le fichier docker-compose.yml
+cat <<EOF > docker-compose.yml
 services:
   update-dashboard:
-    image: ghcr.io/Keidisos/update-dashboard:latest
+    image: ghcr.io/keidisos/update-dashboard:latest
     container_name: update-dashboard
     ports:
-      - "8080:8000"
+      - "8081:8000"  # Port accessible : 8081 (modifiable)
     volumes:
       - ./data:/app/data
-      # Optionnel : monter vos clés SSH
-      # - ~/.ssh:/app/.ssh:ro
     environment:
-      - SECRET_KEY=${SECRET_KEY}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - SECRET_KEY=$(openssl rand -base64 32)
+      # - DISCORD_WEBHOOK_URL=https://discord.com/... (optionnel)
     restart: unless-stopped
 EOF
 
-# Créer le fichier .env
-sudo tee .env > /dev/null << EOF
-SECRET_KEY=$(openssl rand -base64 32)
-DISCORD_WEBHOOK_URL=
-EOF
+# 3. Lancer l'application
+docker compose up -d
 
-# Lancer
-sudo docker compose up -d
-
-# Vérifier
-sudo docker compose logs -f
+# 4. Vérifier les logs
+docker compose logs -f
 ```
 
-### Avec un reverse proxy (Nginx + SSL)
+L'interface sera accessible sur `http://votre-ip:8081`.
 
-```nginx
-# /etc/nginx/sites-available/update-dashboard
-server {
-    listen 80;
-    server_name update.votredomaine.com;
-    return 301 https://$server_name$request_uri;
-}
+---
 
-server {
-    listen 443 ssl http2;
-    server_name update.votredomaine.com;
+## 🔧 Configuration des Hôtes Distants (SSH)
 
-    ssl_certificate /etc/letsencrypt/live/update.votredomaine.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/update.votredomaine.com/privkey.pem;
+Pour que **Update Dashboard** puisse gérer un serveur distant (lister les conteneurs, mises à jour OS), vous devez configurer un accès SSH.
 
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+### Étape 1 : Créer un utilisateur dédié sur l'hôte distant
+
+Connectez-vous à votre serveur **déjà existant** (celui que vous voulez monitorer) et exécutez :
 
 ```bash
-# Activer le site
-sudo ln -s /etc/nginx/sites-available/update-dashboard /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-
-# Obtenir un certificat SSL avec Let's Encrypt
-sudo certbot --nginx -d update.votredomaine.com
-```
-
-### Avec Traefik (Labels Docker)
-
-```yaml
-# docker-compose.yml avec Traefik
-services:
-  update-dashboard:
-    image: ghcr.io/Keidisos/update-dashboard:latest
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.update-dashboard.rule=Host(`update.votredomaine.com`)"
-      - "traefik.http.routers.update-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.update-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.services.update-dashboard.loadbalancer.server.port=8000"
-    # ... reste de la config
-```
-
-## 🔧 Configuration des Hôtes Distants
-
-### Préparer un hôte pour la connexion SSH
-
-```bash
-# Sur l'hôte distant
-# 1. Créer un utilisateur dédié
+# 1. Créer l'utilisateur 'update-manager'
 sudo useradd -m -s /bin/bash update-manager
+
+# 2. L'ajouter au groupe docker (pour gérer les conteneurs)
 sudo usermod -aG docker update-manager
 
-# 2. Configurer l'authentification par clé SSH
-sudo mkdir -p /home/update-manager/.ssh
-sudo chmod 700 /home/update-manager/.ssh
+# 3. Configurer les permissions sudo pour les mises à jour système (apt/yum) sans mot de passe
+# Ceci est CRITIQUE pour que le module "System Updates" fonctionne
+echo "update-manager ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt" | sudo tee /etc/sudoers.d/update-manager
 
-# 3. Ajouter votre clé publique
-echo "votre-cle-publique-ssh" | sudo tee /home/update-manager/.ssh/authorized_keys
-sudo chmod 600 /home/update-manager/.ssh/authorized_keys
-sudo chown -R update-manager:update-manager /home/update-manager/.ssh
+# 4. Sécuriser le fichier sudoers
+sudo chmod 440 /etc/sudoers.d/update-manager
 ```
 
-### Préparer un hôte pour Docker TCP
+### Étape 2 : Mettre en place la clé SSH
+
+Vous devez générer une paire de clés SSH (sur votre machine personnelle ou le serveur dashboard) et fournir la **clé privée** à l'application.
 
 ```bash
-# Sur l'hôte distant - Activer Docker TCP avec TLS
-# Voir: https://docs.docker.com/engine/security/protect-access/
+# 1. Générer une paire de clés (si vous n'en avez pas)
+ssh-keygen -t ed25519 -C "update-dashboard" -f ./dashboard-key -q -N ""
+
+# 2. Copier la clé PUBLIQUE sur l'hôte distant
+# Remplacer 'user@remote-host' par votre accès root ou admin actuel
+ssh-copy-id -i ./dashboard-key.pub update-manager@votre-serveur-distant
+
+# OU manuellement si ssh-copy-id n'est pas dispo :
+# Sur le serveur distant :
+# sudo mkdir -p /home/update-manager/.ssh
+# echo "CONTENU_DE_DASHBOARD_KEY.PUB" | sudo tee /home/update-manager/.ssh/authorized_keys
+# sudo chown -R update-manager:update-manager /home/update-manager/.ssh
+# sudo chmod 700 /home/update-manager/.ssh
+# sudo chmod 600 /home/update-manager/.ssh/authorized_keys
 ```
+
+### Étape 3 : Ajouter l'hôte dans Update Dashboard
+
+1. Allez sur **http://votre-serveur:8081**
+2. Cliquez sur **Add Host**
+3. Remplissez le formulaire :
+   - **Name**: Nom de votre serveur (ex: `Prod-Database`)
+   - **Hostname/IP**: IP du serveur distant
+   - **Type**: `SSH`
+   - **Username**: `update-manager`
+   - **SSH Key**: Collez le contenu de votre **clé PRIVÉE** (`cat ./dashboard-key`)
+   - **SSH Password**: Laisser vide (on utilise la clé)
+4. Cliquez sur **Save**
+
+Le statut devrait passer à **Connected** 🟢. Vous pouvez maintenant gérer les conteneurs et voir les mises à jour système !
 
 ## 📖 Utilisation
 
