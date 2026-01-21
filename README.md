@@ -47,7 +47,7 @@ Application web conteneurisée pour la gestion des mises à jour de conteneurs D
 mkdir update-dashboard && cd update-dashboard
 
 # Télécharger docker-compose.yml
-curl -O https://raw.githubusercontent.com/VOTRE_USERNAME/update-dashboard/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/Keidisos/update-dashboard/main/docker-compose.yml
 
 # Créer le fichier .env
 cat > .env << EOF
@@ -67,7 +67,7 @@ docker compose logs -f
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/VOTRE_USERNAME/update-dashboard.git
+git clone https://github.com/Keidisos/update-dashboard.git
 cd update-dashboard
 
 # Configurer les variables d'environnement
@@ -129,7 +129,7 @@ cd /opt/update-dashboard
 sudo tee docker-compose.yml > /dev/null << 'EOF'
 services:
   update-dashboard:
-    image: ghcr.io/VOTRE_USERNAME/update-dashboard:latest
+    image: ghcr.io/Keidisos/update-dashboard:latest
     container_name: update-dashboard
     ports:
       - "8080:8000"
@@ -202,7 +202,7 @@ sudo certbot --nginx -d update.votredomaine.com
 # docker-compose.yml avec Traefik
 services:
   update-dashboard:
-    image: ghcr.io/VOTRE_USERNAME/update-dashboard:latest
+    image: ghcr.io/Keidisos/update-dashboard:latest
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.update-dashboard.rule=Host(`update.votredomaine.com`)"
