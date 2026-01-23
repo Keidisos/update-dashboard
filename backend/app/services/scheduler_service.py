@@ -152,7 +152,7 @@ class UpdateScheduler:
             containers = await docker_service.list_containers(all=True)
             
             # Find containers with updates
-            updates_available = [c for c in containers if c.get('update_available', False)]
+            updates_available = [c for c in containers if c.update_available]
             
             if not updates_available:
                 logger.info(f"  ✅ All containers up to date ({len(containers)} total)")
@@ -162,11 +162,11 @@ class UpdateScheduler:
             
             # Update each container
             for container in updates_available:
-                container_name = container.get('name', container.get('id'))
+                container_name = container.name or container.id
                 logger.info(f"    📦 Updating: {container_name}")
                 
                 try:
-                    result = await docker_service.update_container(container['id'])
+                    result = await docker_service.update_container(container.id)
                     
                     if result.get('success'):
                         logger.info(f"    ✅ {container_name} updated successfully")
