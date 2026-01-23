@@ -111,16 +111,17 @@ class SOCService:
             
             await ssh_service.connect()
             
-            # Get last 500 lines of auth.log
-            cmd = "sudo tail -n 500 /var/log/auth.log 2>/dev/null || tail -n 500 /var/log/secure 2>/dev/null"
+            # Try multiple log locations without sudo first
+            # Some systems allow read access to auth.log for certain groups
+            cmd = "tail -n 500 /var/log/auth.log 2>/dev/null || tail -n 500 /var/log/secure 2>/dev/null || journalctl -n 500 --no-pager 2>/dev/null | grep -i 'sshd\\|sudo\\|su:' || echo 'NO_LOGS'"
             exit_code, stdout, stderr = await ssh_service.run_command(cmd, sudo=False)
             
             await ssh_service.disconnect()
             
-            if exit_code == 0 and stdout:
+            if exit_code == 0 and stdout and stdout.strip() != 'NO_LOGS':
                 return stdout
             else:
-                logger.warning(f"Failed to collect logs from {host.name}: {stderr}")
+                logger.warning(f"Failed to collect logs from {host.name}. Exit code: {exit_code}, stderr: {stderr}")
                 return None
                 
         except Exception as e:
