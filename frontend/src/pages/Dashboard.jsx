@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
     Container,
     Server,
@@ -94,22 +95,22 @@ function HostCard({ host, stats, loading, onRefresh }) {
 
                     {/* Quick Links */}
                     <div className="flex gap-2 pt-2">
-                        <a
-                            href={`/containers?host=${host.id}`}
+                        <Link
+                            to={`/containers/${host.id}`}
                             className="flex-1 flex items-center justify-center gap-1 text-xs text-primary-400 hover:text-primary-300 py-2 bg-dark-800/50 rounded-lg transition-colors"
                         >
                             <Container className="w-3 h-3" />
                             Containers
                             <ChevronRight className="w-3 h-3" />
-                        </a>
-                        <a
-                            href={`/system?host=${host.id}`}
+                        </Link>
+                        <Link
+                            to={`/system/${host.id}`}
                             className="flex-1 flex items-center justify-center gap-1 text-xs text-primary-400 hover:text-primary-300 py-2 bg-dark-800/50 rounded-lg transition-colors"
                         >
                             <Monitor className="w-3 h-3" />
                             System
                             <ChevronRight className="w-3 h-3" />
-                        </a>
+                        </Link>
                     </div>
                 </div>
             )}

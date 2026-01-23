@@ -23,16 +23,26 @@ function System() {
     const [updating, setUpdating] = useState(false)
     const [updateResult, setUpdateResult] = useState(null)
 
-    // Handle host from URL query param
+    // Handle host from URL path parameter
+    useEffect(() => {
+        if (hostId && hosts.length > 0) {
+            const hostIdNum = parseInt(hostId)
+            if (hostIdNum && hostIdNum !== selectedHostId) {
+                selectHost(hostIdNum)
+            }
+        }
+    }, [hostId, hosts, selectedHostId, selectHost])
+
+    // Handle host from URL query param (fallback)
     const urlHostId = searchParams.get('host')
     useEffect(() => {
-        if (urlHostId && hosts.length > 0) {
+        if (urlHostId && hosts.length > 0 && !hostId) {
             const hostIdNum = parseInt(urlHostId)
             if (hostIdNum && hostIdNum !== selectedHostId) {
                 selectHost(hostIdNum)
             }
         }
-    }, [urlHostId, hosts, selectedHostId, selectHost])
+    }, [urlHostId, hosts, selectedHostId, selectHost, hostId])
 
     const currentHostId = hostId || selectedHostId
     const selectedHost = getSelectedHost()
