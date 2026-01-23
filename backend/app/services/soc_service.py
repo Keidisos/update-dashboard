@@ -113,7 +113,7 @@ class SOCService:
             
             # Get last 500 lines of auth.log
             cmd = "sudo tail -n 500 /var/log/auth.log 2>/dev/null || tail -n 500 /var/log/secure 2>/dev/null"
-            stdout, stderr, exit_code = await ssh_service.execute_command(cmd)
+            exit_code, stdout, stderr = await ssh_service.run_command(cmd, sudo=False)
             
             await ssh_service.disconnect()
             
