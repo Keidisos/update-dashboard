@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from app.config import get_settings
 from app.database import create_db_and_tables
 from app.routers import hosts_router, containers_router, system_router, scheduler_router
+from app.routers import soc as soc_router
 from app.services.scheduler_service import get_scheduler
 
 # Configure logging
@@ -67,6 +68,7 @@ app.include_router(hosts_router, prefix=settings.api_v1_prefix)
 app.include_router(containers_router, prefix=settings.api_v1_prefix)
 app.include_router(system_router, prefix=settings.api_v1_prefix)
 app.include_router(scheduler_router, prefix=settings.api_v1_prefix)
+app.include_router(soc_router.router, prefix=settings.api_v1_prefix)
 
 
 # Health check endpoint

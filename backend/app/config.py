@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     auto_check_interval_minutes: int = 60
     auto_update_containers: bool = False
     auto_update_system: bool = False
+    
+    # SOC (Security Operations Center)
+    soc_enabled: bool = True
+    soc_analysis_interval: int = 10  # minutes
+    ollama_host: str = "http://ollama:11434"
+    ollama_model: str = "cybersec"
 
 
 @lru_cache
