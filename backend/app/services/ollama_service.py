@@ -110,7 +110,13 @@ RETOURNE UNIQUEMENT LE JSON, RIEN D'AUTRE."""
             models = self.client.list()
             model_names = [m['name'] for m in models['models']]
             
-            if self.model in model_names:
+            # Check for exact match or with :latest tag
+            model_found = (
+                self.model in model_names or 
+                f"{self.model}:latest" in model_names
+            )
+            
+            if model_found:
                 logger.info(f"Ollama connected successfully. Model {self.model} is available.")
                 return True
             else:

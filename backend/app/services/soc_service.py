@@ -82,9 +82,7 @@ class SOCService:
         """Collect auth.log from a host via SSH."""
         try:
             ssh_service = SSHService(
-                hostname=host.hostname,
-                port=host.ssh_port,
-                username=host.ssh_user,
+                host=host,
                 password=ssh_password
             )
             
