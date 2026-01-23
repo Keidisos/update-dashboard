@@ -283,10 +283,10 @@ async def check_all_updates(
 async def delete_container(
     host_id: int,
     container_id: str,
-    remove_image: bool = True,
-    force: bool = False,
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    remove_image: bool = True,
+    force: bool = False
 ):
     """
     Delete a container and optionally its image.
