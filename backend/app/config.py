@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     
     # API
     api_v1_prefix: str = "/api/v1"
+    
+    # Auto-update Scheduler
+    auto_check_enabled: bool = True
+    auto_check_interval_minutes: int = 60
+    auto_update_containers: bool = False
+    auto_update_system: bool = False
 
 
 @lru_cache

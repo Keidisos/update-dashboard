@@ -13,7 +13,8 @@ from fastapi.responses import FileResponse
 
 from app.config import get_settings
 from app.database import create_db_and_tables
-from app.routers import hosts_router, containers_router, system_router
+from app.routers import hosts_router, containers_router, system_router, scheduler_router
+from app.services.scheduler_service import get_scheduler
 
 # Configure logging
 logging.basicConfig(
@@ -33,10 +34,15 @@ async def lifespan(app: FastAPI):
     await create_db_and_tables()
     logger.info("Database initialized")
     
+    # Start auto-update scheduler
+    scheduler = get_scheduler()
+    scheduler.start()
+    
     yield
     
     # Shutdown
     logger.info("Shutting down Update Dashboard...")
+    scheduler.stop()
 
 
 # Create FastAPI app
@@ -60,6 +66,7 @@ app.add_middleware(
 app.include_router(hosts_router, prefix=settings.api_v1_prefix)
 app.include_router(containers_router, prefix=settings.api_v1_prefix)
 app.include_router(system_router, prefix=settings.api_v1_prefix)
+app.include_router(scheduler_router, prefix=settings.api_v1_prefix)
 
 
 # Health check endpoint
