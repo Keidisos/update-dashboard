@@ -12,7 +12,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import select
 
 from app.config import get_settings
-from app.database import get_async_session
+from app.database import async_session_maker
 from app.models.host import Host
 from app.services.docker_service import DockerService
 from app.services.ssh_service import SSHService
@@ -82,7 +82,7 @@ class UpdateScheduler:
             logger.info("=" * 60)
             
             # Get all hosts from database
-            async for session in get_async_session():
+            async with async_session_maker() as session:
                 result = await session.execute(select(Host))
                 hosts = result.scalars().all()
                 
