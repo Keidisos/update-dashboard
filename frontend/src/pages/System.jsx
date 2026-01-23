@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import {
     Monitor,
     RefreshCw,
@@ -15,12 +15,24 @@ import { systemApi } from '../services/api'
 
 function System() {
     const { hostId } = useParams()
-    const { selectedHostId, getSelectedHost } = useHostStore()
+    const [searchParams] = useSearchParams()
+    const { hosts, selectedHostId, setSelectedHost, getSelectedHost } = useHostStore()
     const [systemStatus, setSystemStatus] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [updating, setUpdating] = useState(false)
     const [updateResult, setUpdateResult] = useState(null)
+
+    // Handle host from URL query param
+    const urlHostId = searchParams.get('host')
+    useEffect(() => {
+        if (urlHostId && hosts.length > 0) {
+            const hostIdNum = parseInt(urlHostId)
+            if (hostIdNum && hostIdNum !== selectedHostId) {
+                setSelectedHost(hostIdNum)
+            }
+        }
+    }, [urlHostId, hosts, selectedHostId, setSelectedHost])
 
     const currentHostId = hostId || selectedHostId
     const selectedHost = getSelectedHost()
@@ -172,8 +184,8 @@ function System() {
                     {/* Update Result */}
                     {updateResult && (
                         <div className={`card p-6 ${updateResult.success
-                                ? 'bg-emerald-500/10 border-emerald-500/30'
-                                : 'bg-red-500/10 border-red-500/30'
+                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                            : 'bg-red-500/10 border-red-500/30'
                             }`}>
                             <div className="flex items-center gap-3 mb-4">
                                 {updateResult.success ? (

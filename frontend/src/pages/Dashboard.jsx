@@ -7,10 +7,12 @@ import {
     RefreshCw,
     AlertCircle,
     CheckCircle2,
-    Clock
+    Wifi,
+    WifiOff,
+    ChevronRight
 } from 'lucide-react'
 import { useHostStore } from '../store/hostStore'
-import { containersApi, systemApi } from '../services/api'
+import { containersApi, systemApi, hostsApi } from '../services/api'
 
 function StatCard({ icon: Icon, label, value, subvalue, color = 'primary' }) {
     const colorClasses = {
@@ -34,81 +36,236 @@ function StatCard({ icon: Icon, label, value, subvalue, color = 'primary' }) {
     )
 }
 
+function HostCard({ host, stats, loading, onRefresh }) {
+    const isConnected = stats?.connected !== false
+    const hasUpdates = (stats?.containerUpdates || 0) + (stats?.systemUpdates || 0) > 0
+
+    return (
+        <div className="card p-5 hover:border-dark-600 transition-colors">
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-emerald-500/20' : 'bg-red-500/20'
+                        }`}>
+                        <Server className={`w-5 h-5 ${isConnected ? 'text-emerald-400' : 'text-red-400'}`} />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-white">{host.name}</h3>
+                        <p className="text-xs text-dark-400">{host.hostname}</p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => onRefresh(host.id)}
+                    disabled={loading}
+                    className="p-2 hover:bg-dark-800 rounded-lg transition-colors"
+                    title="Refresh"
+                >
+                    <RefreshCw className={`w-4 h-4 text-dark-400 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+            </div>
+
+            {loading ? (
+                <div className="flex items-center justify-center py-6">
+                    <RefreshCw className="w-5 h-5 text-dark-500 animate-spin" />
+                </div>
+            ) : !isConnected ? (
+                <div className="flex items-center gap-2 text-red-400 text-sm py-4">
+                    <WifiOff className="w-4 h-4" />
+                    <span>Connection failed</span>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-dark-800/50 rounded-lg py-2">
+                            <p className="text-lg font-bold text-white">{stats?.totalContainers || 0}</p>
+                            <p className="text-xs text-dark-400">Containers</p>
+                        </div>
+                        <div className="bg-dark-800/50 rounded-lg py-2">
+                            <p className="text-lg font-bold text-emerald-400">{stats?.runningContainers || 0}</p>
+                            <p className="text-xs text-dark-400">Running</p>
+                        </div>
+                        <div className={`rounded-lg py-2 ${hasUpdates ? 'bg-amber-500/20' : 'bg-dark-800/50'}`}>
+                            <p className={`text-lg font-bold ${hasUpdates ? 'text-amber-400' : 'text-white'}`}>
+                                {(stats?.containerUpdates || 0) + (stats?.systemUpdates || 0)}
+                            </p>
+                            <p className="text-xs text-dark-400">Updates</p>
+                        </div>
+                    </div>
+
+                    {/* Quick Links */}
+                    <div className="flex gap-2 pt-2">
+                        <a
+                            href={`/containers?host=${host.id}`}
+                            className="flex-1 flex items-center justify-center gap-1 text-xs text-primary-400 hover:text-primary-300 py-2 bg-dark-800/50 rounded-lg transition-colors"
+                        >
+                            <Container className="w-3 h-3" />
+                            Containers
+                            <ChevronRight className="w-3 h-3" />
+                        </a>
+                        <a
+                            href={`/system?host=${host.id}`}
+                            className="flex-1 flex items-center justify-center gap-1 text-xs text-primary-400 hover:text-primary-300 py-2 bg-dark-800/50 rounded-lg transition-colors"
+                        >
+                            <Monitor className="w-3 h-3" />
+                            System
+                            <ChevronRight className="w-3 h-3" />
+                        </a>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
 function Dashboard() {
-    const { hosts, selectedHostId, getSelectedHost } = useHostStore()
-    const [stats, setStats] = useState({
-        containers: { total: 0, running: 0, updates: 0 },
-        system: { updates: 0 },
-        loading: true,
+    const { hosts, fetchHosts } = useHostStore()
+    const [hostStats, setHostStats] = useState({})
+    const [loadingHosts, setLoadingHosts] = useState({})
+    const [globalStats, setGlobalStats] = useState({
+        totalHosts: 0,
+        connectedHosts: 0,
+        totalContainers: 0,
+        runningContainers: 0,
+        containerUpdates: 0,
+        systemUpdates: 0,
     })
-    const [recentActivity, setRecentActivity] = useState([])
 
-    const selectedHost = getSelectedHost()
-
+    // Fetch hosts on mount
     useEffect(() => {
-        if (!selectedHostId) return
+        fetchHosts()
+    }, [fetchHosts])
 
-        const fetchStats = async () => {
-            setStats(prev => ({ ...prev, loading: true }))
+    // Fetch stats for all hosts
+    useEffect(() => {
+        if (hosts.length === 0) return
 
-            try {
-                // Fetch containers
-                const containersRes = await containersApi.list(selectedHostId, {
-                    all: true,
-                    checkUpdates: true
-                })
-                const containers = containersRes.data
-
-                const containerStats = {
-                    total: containers.length,
-                    running: containers.filter(c => c.state === 'running').length,
-                    updates: containers.filter(c => c.update_available).length,
-                }
-
-                // Fetch system updates
-                let systemUpdates = 0
-                try {
-                    const systemRes = await systemApi.checkUpdates(selectedHostId)
-                    systemUpdates = systemRes.data.updates_available
-                } catch (e) {
-                    console.warn('Could not fetch system updates:', e)
-                }
-
-                setStats({
-                    containers: containerStats,
-                    system: { updates: systemUpdates },
-                    loading: false,
-                })
-
-                // Set recent containers with updates as activity
-                setRecentActivity(
-                    containers
-                        .filter(c => c.update_available)
-                        .slice(0, 5)
-                        .map(c => ({
-                            type: 'container_update',
-                            name: c.name,
-                            image: c.image,
-                            time: new Date().toISOString(),
-                        }))
-                )
-            } catch (error) {
-                console.error('Failed to fetch stats:', error)
-                setStats(prev => ({ ...prev, loading: false }))
+        const fetchAllStats = async () => {
+            const newHostStats = {}
+            let global = {
+                totalHosts: hosts.length,
+                connectedHosts: 0,
+                totalContainers: 0,
+                runningContainers: 0,
+                containerUpdates: 0,
+                systemUpdates: 0,
             }
+
+            // Mark all as loading
+            const loadingState = {}
+            hosts.forEach(h => { loadingState[h.id] = true })
+            setLoadingHosts(loadingState)
+
+            // Fetch in parallel
+            await Promise.all(hosts.map(async (host) => {
+                try {
+                    // Test connection first
+                    const statusRes = await hostsApi.getStatus(host.id)
+                    if (!statusRes.data.connected) {
+                        newHostStats[host.id] = { connected: false }
+                        return
+                    }
+
+                    // Fetch containers
+                    const containersRes = await containersApi.list(host.id, { all: true, checkUpdates: true })
+                    const containers = containersRes.data
+
+                    const stats = {
+                        connected: true,
+                        totalContainers: containers.length,
+                        runningContainers: containers.filter(c => c.state === 'running').length,
+                        containerUpdates: containers.filter(c => c.update_available).length,
+                        systemUpdates: 0,
+                    }
+
+                    // Fetch system updates
+                    try {
+                        const systemRes = await systemApi.checkUpdates(host.id)
+                        stats.systemUpdates = systemRes.data.updates_available || 0
+                    } catch (e) {
+                        console.warn(`Could not fetch system updates for ${host.name}:`, e)
+                    }
+
+                    newHostStats[host.id] = stats
+
+                    // Update global
+                    global.connectedHosts++
+                    global.totalContainers += stats.totalContainers
+                    global.runningContainers += stats.runningContainers
+                    global.containerUpdates += stats.containerUpdates
+                    global.systemUpdates += stats.systemUpdates
+                } catch (error) {
+                    console.error(`Failed to fetch stats for ${host.name}:`, error)
+                    newHostStats[host.id] = { connected: false, error: error.message }
+                } finally {
+                    setLoadingHosts(prev => ({ ...prev, [host.id]: false }))
+                }
+            }))
+
+            setHostStats(newHostStats)
+            setGlobalStats(global)
         }
 
-        fetchStats()
-    }, [selectedHostId])
+        fetchAllStats()
+    }, [hosts])
 
-    if (!selectedHost) {
+    // Refresh single host
+    const refreshHost = async (hostId) => {
+        setLoadingHosts(prev => ({ ...prev, [hostId]: true }))
+        const host = hosts.find(h => h.id === hostId)
+        if (!host) return
+
+        try {
+            const statusRes = await hostsApi.getStatus(hostId)
+            if (!statusRes.data.connected) {
+                setHostStats(prev => ({ ...prev, [hostId]: { connected: false } }))
+                return
+            }
+
+            const containersRes = await containersApi.list(hostId, { all: true, checkUpdates: true })
+            const containers = containersRes.data
+
+            const stats = {
+                connected: true,
+                totalContainers: containers.length,
+                runningContainers: containers.filter(c => c.state === 'running').length,
+                containerUpdates: containers.filter(c => c.update_available).length,
+                systemUpdates: 0,
+            }
+
+            try {
+                const systemRes = await systemApi.checkUpdates(hostId)
+                stats.systemUpdates = systemRes.data.updates_available || 0
+            } catch (e) { /* ignore */ }
+
+            setHostStats(prev => ({ ...prev, [hostId]: stats }))
+
+            // Recalculate global stats
+            setGlobalStats(prev => {
+                const oldStats = hostStats[hostId] || {}
+                return {
+                    ...prev,
+                    connectedHosts: prev.connectedHosts + (stats.connected && !oldStats.connected ? 1 : 0),
+                    totalContainers: prev.totalContainers - (oldStats.totalContainers || 0) + stats.totalContainers,
+                    runningContainers: prev.runningContainers - (oldStats.runningContainers || 0) + stats.runningContainers,
+                    containerUpdates: prev.containerUpdates - (oldStats.containerUpdates || 0) + stats.containerUpdates,
+                    systemUpdates: prev.systemUpdates - (oldStats.systemUpdates || 0) + stats.systemUpdates,
+                }
+            })
+        } catch (error) {
+            setHostStats(prev => ({ ...prev, [hostId]: { connected: false, error: error.message } }))
+        } finally {
+            setLoadingHosts(prev => ({ ...prev, [hostId]: false }))
+        }
+    }
+
+    if (hosts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-96">
                 <div className="w-20 h-20 bg-dark-800 rounded-full flex items-center justify-center mb-4">
                     <Server className="w-10 h-10 text-dark-500" />
                 </div>
-                <h2 className="text-xl font-semibold text-white mb-2">No host selected</h2>
-                <p className="text-dark-400 mb-4">Select a host from the sidebar or add a new one</p>
+                <h2 className="text-xl font-semibold text-white mb-2">No hosts configured</h2>
+                <p className="text-dark-400 mb-4">Add your first Docker host to get started</p>
                 <a href="/hosts" className="btn btn-primary">
                     Manage Hosts
                 </a>
@@ -116,134 +273,93 @@ function Dashboard() {
         )
     }
 
+    const totalUpdates = globalStats.containerUpdates + globalStats.systemUpdates
+
     return (
         <div className="space-y-8 animate-fadeIn">
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
                 <p className="text-dark-400">
-                    Overview for <span className="text-primary-400 font-medium">{selectedHost.name}</span>
+                    Overview of all your hosts ({globalStats.connectedHosts}/{globalStats.totalHosts} connected)
                 </p>
             </div>
 
-            {/* Stats Grid */}
+            {/* Global Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
-                    icon={Container}
-                    label="Total Containers"
-                    value={stats.loading ? '...' : stats.containers.total}
-                    subvalue={`${stats.containers.running} running`}
+                    icon={Server}
+                    label="Hosts"
+                    value={globalStats.totalHosts}
+                    subvalue={`${globalStats.connectedHosts} connected`}
                     color="primary"
                 />
                 <StatCard
-                    icon={CheckCircle2}
-                    label="Running"
-                    value={stats.loading ? '...' : stats.containers.running}
-                    subvalue="Healthy containers"
+                    icon={Container}
+                    label="Total Containers"
+                    value={globalStats.totalContainers}
+                    subvalue={`${globalStats.runningContainers} running`}
                     color="emerald"
                 />
                 <StatCard
                     icon={ArrowUpCircle}
                     label="Container Updates"
-                    value={stats.loading ? '...' : stats.containers.updates}
+                    value={globalStats.containerUpdates}
                     subvalue="Available updates"
-                    color={stats.containers.updates > 0 ? 'amber' : 'primary'}
+                    color={globalStats.containerUpdates > 0 ? 'amber' : 'primary'}
                 />
                 <StatCard
                     icon={Monitor}
                     label="System Updates"
-                    value={stats.loading ? '...' : stats.system.updates}
+                    value={globalStats.systemUpdates}
                     subvalue="Package updates"
-                    color={stats.system.updates > 0 ? 'amber' : 'primary'}
+                    color={globalStats.systemUpdates > 0 ? 'amber' : 'primary'}
                 />
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Containers with updates */}
-                <div className="card">
-                    <div className="p-4 border-b border-dark-700/50 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <ArrowUpCircle className="w-5 h-5 text-amber-400" />
-                            <h3 className="font-semibold text-white">Available Updates</h3>
-                        </div>
-                        <a
-                            href="/containers"
-                            className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
-                        >
-                            View all →
-                        </a>
-                    </div>
-                    <div className="p-4">
-                        {stats.loading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <RefreshCw className="w-6 h-6 text-dark-500 animate-spin" />
-                            </div>
-                        ) : recentActivity.length === 0 ? (
-                            <div className="text-center py-8">
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-                                <p className="text-dark-400">All containers are up to date!</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {recentActivity.map((item, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                                                <Container className="w-4 h-4 text-amber-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-white">{item.name}</p>
-                                                <p className="text-xs text-dark-400">{item.image}</p>
-                                            </div>
-                                        </div>
-                                        <span className="badge badge-update">Update</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Host Info */}
-                <div className="card">
-                    <div className="p-4 border-b border-dark-700/50 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Server className="w-5 h-5 text-primary-400" />
-                            <h3 className="font-semibold text-white">Host Information</h3>
-                        </div>
-                    </div>
-                    <div className="p-4 space-y-3">
-                        <div className="flex justify-between items-center p-3 bg-dark-800/50 rounded-lg">
-                            <span className="text-dark-400">Hostname</span>
-                            <span className="text-white font-mono text-sm">{selectedHost.hostname}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-dark-800/50 rounded-lg">
-                            <span className="text-dark-400">Connection</span>
-                            <span className="text-white text-sm capitalize">{selectedHost.connection_type}</span>
-                        </div>
-                        {selectedHost.os_type && (
-                            <div className="flex justify-between items-center p-3 bg-dark-800/50 rounded-lg">
-                                <span className="text-dark-400">OS</span>
-                                <span className="text-white text-sm">
-                                    {selectedHost.os_type} {selectedHost.os_version}
-                                </span>
-                            </div>
-                        )}
-                        <div className="flex justify-between items-center p-3 bg-dark-800/50 rounded-lg">
-                            <span className="text-dark-400">Last Connected</span>
-                            <span className="text-white text-sm">
-                                {selectedHost.last_connected
-                                    ? new Date(selectedHost.last_connected).toLocaleString()
-                                    : 'Never'}
-                            </span>
-                        </div>
-                    </div>
+            {/* Hosts Grid */}
+            <div>
+                <h2 className="text-xl font-semibold text-white mb-4">Hosts Overview</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {hosts.map(host => (
+                        <HostCard
+                            key={host.id}
+                            host={host}
+                            stats={hostStats[host.id]}
+                            loading={loadingHosts[host.id]}
+                            onRefresh={refreshHost}
+                        />
+                    ))}
                 </div>
             </div>
+
+            {/* Updates Summary */}
+            {totalUpdates > 0 && (
+                <div className="card p-6 border-amber-500/30 bg-amber-500/5">
+                    <div className="flex items-center gap-3 mb-4">
+                        <AlertCircle className="w-6 h-6 text-amber-400" />
+                        <h3 className="text-lg font-semibold text-white">
+                            {totalUpdates} Update{totalUpdates > 1 ? 's' : ''} Available
+                        </h3>
+                    </div>
+                    <p className="text-dark-400 text-sm mb-4">
+                        {globalStats.containerUpdates > 0 && `${globalStats.containerUpdates} container update${globalStats.containerUpdates > 1 ? 's' : ''}`}
+                        {globalStats.containerUpdates > 0 && globalStats.systemUpdates > 0 && ' and '}
+                        {globalStats.systemUpdates > 0 && `${globalStats.systemUpdates} system package${globalStats.systemUpdates > 1 ? 's' : ''}`}
+                        {' '}across your hosts.
+                    </p>
+                    <div className="flex gap-3">
+                        <a href="/containers" className="btn btn-primary">
+                            <Container className="w-4 h-4" />
+                            View Containers
+                        </a>
+                        <a href="/system" className="btn btn-secondary">
+                            <Monitor className="w-4 h-4" />
+                            View System Updates
+                        </a>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

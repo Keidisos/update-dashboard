@@ -21,7 +21,7 @@ function HostForm({ host, onSave, onCancel }) {
         hostname: host?.hostname || '',
         connection_type: host?.connection_type || 'ssh',
         ssh_port: host?.ssh_port || 22,
-        ssh_user: host?.ssh_user || 'root',
+        ssh_user: host?.ssh_user || 'update-manager',
         ssh_key: '',
         ssh_password: '',
         docker_port: host?.docker_port || 2376,
@@ -356,8 +356,8 @@ function Hosts() {
                                         {/* Status */}
                                         {status && (
                                             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${status.connected
-                                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                                    : 'bg-red-500/20 text-red-400'
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'bg-red-500/20 text-red-400'
                                                 }`}>
                                                 {status.connected ? (
                                                     <>

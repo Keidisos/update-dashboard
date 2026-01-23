@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import {
     Container as ContainerIcon,
     RefreshCw,
@@ -15,7 +15,8 @@ import UpdateModal from '../components/Containers/UpdateModal'
 
 function Containers() {
     const { hostId } = useParams()
-    const { selectedHostId, getSelectedHost } = useHostStore()
+    const [searchParams] = useSearchParams()
+    const { hosts, selectedHostId, setSelectedHost, getSelectedHost } = useHostStore()
     const [containers, setContainers] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -28,6 +29,17 @@ function Containers() {
     const [selectedContainer, setSelectedContainer] = useState(null)
     const [isUpdating, setIsUpdating] = useState(false)
     const [updateResult, setUpdateResult] = useState(null)
+
+    // Handle host from URL query param
+    const urlHostId = searchParams.get('host')
+    useEffect(() => {
+        if (urlHostId && hosts.length > 0) {
+            const hostIdNum = parseInt(urlHostId)
+            if (hostIdNum && hostIdNum !== selectedHostId) {
+                setSelectedHost(hostIdNum)
+            }
+        }
+    }, [urlHostId, hosts, selectedHostId, setSelectedHost])
 
     const currentHostId = hostId || selectedHostId
     const selectedHost = getSelectedHost()
