@@ -224,3 +224,20 @@ class NotificationService:
                 ],
                 footer="Update Dashboard"
             )
+
+
+# Helper function for scheduler
+async def send_discord_notification(title: str, description: str, color: int = 0x0099FF) -> bool:
+    """
+    Quick helper to send Discord notifications.
+    
+    Args:
+        title: Notification title
+        description: Notification description  
+        color: Embed color (hex)
+        
+    Returns:
+        True if sent successfully
+    """
+    service = NotificationService()
+    return await service.send_notification(title, description, color)
