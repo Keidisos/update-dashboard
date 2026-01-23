@@ -199,20 +199,50 @@ async def get_host_status(host_id: int, db: AsyncSession = Depends(get_db)):
     docker_service = DockerService(host, ssh_key, ssh_password)
     
     try:
-        client = await docker_service.connect()
-        version = client.version()
-        
-        # Update last connected
-        host.last_connected = datetime.utcnow()
-        host.last_error = None
-        await db.commit()
-        
-        return HostStatus(
-            host_id=host_id,
-            connected=True,
-            docker_version=version.get("Version"),
-            os_info=f"{version.get('Os')}/{version.get('Arch')}"
-        )
+        # Try Docker first
+        try:
+            client = await docker_service.connect()
+            version = client.version()
+            
+            # Update last connected
+            host.last_connected = datetime.utcnow()
+            host.last_error = None
+            await db.commit()
+            
+            return HostStatus(
+                host_id=host_id,
+                connected=True,
+                docker_version=version.get("Version"),
+                os_info=f"{version.get('Os')}/{version.get('Arch')}"
+            )
+        except Exception as docker_error:
+            # If Docker fails but it's an SSH host, try checking just SSH
+            if host.connection_type == ConnectionType.SSH:
+                from app.services.ssh_service import SSHService
+                
+                try:
+                    ssh_service = SSHService(host, ssh_key, ssh_password)
+                    system_info = await ssh_service.get_system_info()
+                    
+                    # Update last connected (SSH worked)
+                    host.last_connected = datetime.utcnow()
+                    host.last_error = f"Docker failed: {str(docker_error)}"
+                    await db.commit()
+                    
+                    return HostStatus(
+                        host_id=host_id,
+                        connected=True,
+                        docker_version=None,
+                        os_info=f"{system_info.os_name} ({system_info.kernel})",
+                        error=f"Docker unreachable: {str(docker_error)}"
+                    )
+                except Exception as ssh_error:
+                    # Both failed
+                    raise Exception(f"Docker: {docker_error}, SSH: {ssh_error}")
+            else:
+                # Not SSH, so Docker error is fatal
+                raise docker_error
+                
     except Exception as e:
         host.last_error = str(e)
         await db.commit()
