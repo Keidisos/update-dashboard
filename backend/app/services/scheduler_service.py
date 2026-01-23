@@ -143,10 +143,7 @@ class UpdateScheduler:
             
             # Connect to Docker
             docker_service = DockerService(
-                host=host.hostname,
-                connection_type=host.connection_type,
-                ssh_user=host.ssh_user,
-                ssh_port=host.ssh_port,
+                host=host,
                 ssh_key=ssh_key,
                 ssh_password=ssh_password,
             )
