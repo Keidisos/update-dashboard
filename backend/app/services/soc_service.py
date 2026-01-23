@@ -15,6 +15,8 @@ from app.models.security_incident import SeverityLevel, IncidentCategory
 from app.services.ollama_service import OllamaService
 from app.services.log_parser_service import LogParserService
 from app.services.ssh_service import SSHService
+from app.utils import decrypt_value
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,14 @@ class SOCService:
         """
         try:
             logger.info(f"Starting SOC analysis for host: {host.name}")
+            
+            # Decrypt SSH credentials if not provided
+            if not ssh_password:
+                settings = get_settings()
+                if host.ssh_password_encrypted:
+                    ssh_password = decrypt_value(host.ssh_password_encrypted, settings.secret_key)
+                # Could also decrypt ssh_key if needed
+                # ssh_key = decrypt_value(host.ssh_key_encrypted, settings.secret_key) if host.ssh_key_encrypted else None
             
             # Step 1: Collect auth.log
             raw_logs = await self._collect_auth_logs(host, ssh_password)
