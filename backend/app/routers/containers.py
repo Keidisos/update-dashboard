@@ -277,3 +277,74 @@ async def check_all_updates(
         )
     finally:
         await docker_service.disconnect()
+
+
+@router.delete("/{host_id}/{container_id}")
+async def delete_container(
+    host_id: int,
+    container_id: str,
+    remove_image: bool = True,
+    force: bool = False,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete a container and optionally its image.
+    
+    Args:
+        host_id: Host ID
+        container_id: Container ID or name
+        remove_image: Remove the container's image if not used by other containers (default: True)
+        force: Force removal even if container is running (default: False)
+    """
+    docker_service, host = await get_docker_service(host_id, db)
+    notification_service = NotificationService()
+    
+    try:
+        # Get container info before deletion
+        container = await docker_service.get_container(container_id)
+        
+        # Create deletion log
+        update_log = UpdateLog(
+            host_id=host_id,
+            update_type=UpdateType.CONTAINER,
+            status=UpdateStatus.IN_PROGRESS,
+            container_name=container.name,
+            container_id=container.id,
+            old_image=container.image,
+        )
+        db.add(update_log)
+        await db.commit()
+        
+        # Perform deletion
+        result = await docker_service.delete_container(
+            container_id=container_id,
+            remove_image=remove_image,
+            force=force
+        )
+        
+        # Update log
+        update_log.status = UpdateStatus.SUCCESS if result["success"] else UpdateStatus.FAILED
+        update_log.error_message = result.get("error")
+        update_log.logs = "\n".join(result.get("removed_items", []))
+        await db.commit()
+        
+        # Send notification in background
+        if notification_service.is_configured and result["success"]:
+            background_tasks.add_task(
+                notification_service.notify_container_deleted,
+                host.name,
+                result["container_name"],
+                result.get("image_id", "")[:12],
+                result.get("removed_items", [])
+            )
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete container: {str(e)}"
+        )
+    finally:
+        await docker_service.disconnect()

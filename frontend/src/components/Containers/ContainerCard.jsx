@@ -9,11 +9,12 @@ import {
     Box,
     HardDrive,
     Network,
-    Clock
+    Clock,
+    Trash2
 } from 'lucide-react'
 import clsx from 'clsx'
 
-function ContainerCard({ container, onUpdate, isUpdating }) {
+function ContainerCard({ container, onUpdate, onDelete, isUpdating }) {
     const [isExpanded, setIsExpanded] = useState(false)
 
     const stateColors = {
@@ -137,6 +138,13 @@ function ContainerCard({ container, onUpdate, isUpdating }) {
                             )}
                         </button>
                     )}
+                    <button
+                        onClick={() => onDelete?.(container)}
+                        className="btn bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 text-sm py-1.5 px-3"
+                        title="Delete container"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
 

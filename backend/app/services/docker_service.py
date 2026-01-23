@@ -696,6 +696,76 @@ class DockerService:
                 logs=logs
             )
 
+    async def delete_container(
+        self,
+        container_id: str,
+        remove_image: bool = True,
+        force: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Delete a container and optionally its image.
+        
+        Args:
+            container_id: Container ID or name
+            remove_image: Remove the container's image if not used by other containers
+            force: Force removal even if container is running
+            
+        Returns:
+            Dict with success status, message, and removed items
+        """
+        client = await self.connect()
+        removed_items = []
+        
+        try:
+            # Get container info
+            container = client.containers.get(container_id)
+            container_name = container.name
+            image_id = container.image.id
+            image_tags = container.image.tags
+            
+            # Stop container if running (unless force=True which removes anyway)
+            if container.status == "running" and not force:
+                container.stop(timeout=10)
+                removed_items.append(f"Stopped container {container_name}")
+            
+            # Remove container
+            container.remove(force=force)
+            removed_items.append(f"Removed container {container_name}")
+            
+            # Check if we should remove the image
+            if remove_image:
+                # Check if any other containers use this image
+                all_containers = client.containers.list(all=True)
+                image_in_use = any(c.image.id == image_id for c in all_containers)
+                
+                if not image_in_use:
+                    try:
+                        client.images.remove(image_id, force=False)
+                        removed_items.append(f"Removed image {image_tags[0] if image_tags else image_id[:12]}")
+                    except Exception as e:
+                        # Image removal failed, but container is already gone
+                        removed_items.append(f"Could not remove image: {str(e)}")
+                else:
+                    removed_items.append(f"Image {image_tags[0] if image_tags else image_id[:12]} still in use by other containers")
+            
+            return {
+                "success": True,
+                "container_id": container_id,
+                "container_name": container_name,
+                "image_id": image_id,
+                "removed_items": removed_items,
+                "message": f"Successfully deleted {container_name}"
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "container_id": container_id,
+                "error": str(e),
+                "removed_items": removed_items,
+                "message": f"Failed to delete container: {str(e)}"
+            }
+
 
 class SSHDockerClient:
     """

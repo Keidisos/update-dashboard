@@ -12,6 +12,7 @@ import { useHostStore } from '../store/hostStore'
 import { containersApi } from '../services/api'
 import ContainerCard from '../components/Containers/ContainerCard'
 import UpdateModal from '../components/Containers/UpdateModal'
+import DeleteModal from '../components/Containers/DeleteModal'
 
 function Containers() {
     const { hostId } = useParams()
@@ -29,6 +30,10 @@ function Containers() {
     const [selectedContainer, setSelectedContainer] = useState(null)
     const [isUpdating, setIsUpdating] = useState(false)
     const [updateResult, setUpdateResult] = useState(null)
+
+    // Delete modal state
+    const [deletingContainer, setDeletingContainer] = useState(null)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     // Handle host from URL path parameter
     useEffect(() => {
@@ -111,6 +116,32 @@ function Containers() {
     const handleCloseModal = () => {
         setSelectedContainer(null)
         setUpdateResult(null)
+    }
+
+    const handleDelete = (container) => {
+        setDeletingContainer(container)
+    }
+
+    const handleConfirmDelete = async (removeImage, force) => {
+        if (!deletingContainer) return
+
+        setIsDeleting(true)
+        try {
+            await containersApi.delete(currentHostId, deletingContainer.id, removeImage, force)
+            // Refresh containers list
+            await fetchContainers(true)
+            // Close modal
+            setDeletingContainer(null)
+        } catch (err) {
+            console.error('Delete failed:', err)
+            alert(err.response?.data?.detail || err.message || 'Failed to delete container')
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    const handleCancelDelete = () => {
+        setDeletingContainer(null)
     }
 
     // Filter containers
@@ -251,6 +282,7 @@ function Containers() {
                             key={container.id}
                             container={container}
                             onUpdate={() => handleUpdate(container)}
+                            onDelete={handleDelete}
                             isUpdating={isUpdating && selectedContainer?.id === container.id}
                         />
                     ))}
@@ -265,6 +297,16 @@ function Containers() {
                     onCancel={handleCloseModal}
                     isUpdating={isUpdating}
                     result={updateResult}
+                />
+            )}
+
+            {/* Delete modal */}
+            {deletingContainer && (
+                <DeleteModal
+                    container={deletingContainer}
+                    onConfirm={handleConfirmDelete}
+                    onCancel={handleCancelDelete}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>

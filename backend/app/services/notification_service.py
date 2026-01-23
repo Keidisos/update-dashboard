@@ -225,6 +225,29 @@ class NotificationService:
                 footer="Update Dashboard"
             )
 
+    async def notify_container_deleted(
+        self,
+        host_name: str,
+        container_name: str,
+        image_id: str,
+        removed_items: List[str]
+    ) -> bool:
+        """Notify that a container was deleted."""
+        items_text = "\n".join(f"• {item}" for item in removed_items) if removed_items else "Container removed"
+        
+        return await self.send_notification(
+            title="🗑️ Container Deleted",
+            description=f"Container **{container_name}** has been removed from **{host_name}**",
+            color=self.COLOR_INFO,
+            fields=[
+                {"name": "Host", "value": host_name, "inline": True},
+                {"name": "Container", "value": container_name, "inline": True},
+                {"name": "Image ID", "value": f"`{image_id}`", "inline": True},
+                {"name": "Actions Performed", "value": items_text, "inline": False},
+            ],
+            footer="Update Dashboard"
+        )
+
 
 # Helper function for scheduler
 async def send_discord_notification(title: str, description: str, color: int = 0x0099FF) -> bool:

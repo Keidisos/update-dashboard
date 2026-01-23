@@ -60,6 +60,11 @@ export const containersApi = {
 
     checkUpdates: (hostId) =>
         api.post(`/containers/${hostId}/check-updates`),
+
+    delete: (hostId, containerId, removeImage = true, force = false) =>
+        api.delete(`/containers/${hostId}/${containerId}`, {
+            params: { remove_image: removeImage, force }
+        }),
 }
 
 // ============== System API ==============
