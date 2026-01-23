@@ -91,8 +91,21 @@ class SOCService:
     ) -> Optional[str]:
         """Collect auth.log from a host via SSH."""
         try:
+            # Decrypt SSH credentials
+            settings = get_settings()
+            
+            # Decrypt SSH key if present
+            ssh_key = None
+            if host.ssh_key_encrypted:
+                ssh_key = decrypt_value(host.ssh_key_encrypted, settings.secret_key)
+            
+            # Decrypt password if present and not provided
+            if not ssh_password and host.ssh_password_encrypted:
+                ssh_password = decrypt_value(host.ssh_password_encrypted, settings.secret_key)
+            
             ssh_service = SSHService(
                 host=host,
+                private_key=ssh_key,
                 password=ssh_password
             )
             
