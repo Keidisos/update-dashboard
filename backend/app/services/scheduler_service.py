@@ -17,7 +17,7 @@ from app.models.host import Host
 from app.services.docker_service import DockerService
 from app.services.ssh_service import SSHService
 from app.services.notification_service import send_discord_notification
-from app.utils.crypto import decrypt_value
+from app.utils import decrypt_value
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -138,8 +138,8 @@ class UpdateScheduler:
         
         try:
             # Decrypt credentials
-            ssh_key = decrypt_value(host.ssh_key_encrypted) if host.ssh_key_encrypted else None
-            ssh_password = decrypt_value(host.ssh_password_encrypted) if host.ssh_password_encrypted else None
+            ssh_key = decrypt_value(host.ssh_key_encrypted, settings.secret_key) if host.ssh_key_encrypted else None
+            ssh_password = decrypt_value(host.ssh_password_encrypted, settings.secret_key) if host.ssh_password_encrypted else None
             
             # Connect to Docker
             docker_service = DockerService(
@@ -200,8 +200,8 @@ class UpdateScheduler:
         
         try:
             # Decrypt credentials
-            ssh_key = decrypt_value(host.ssh_key_encrypted) if host.ssh_key_encrypted else None
-            ssh_password = decrypt_value(host.ssh_password_encrypted) if host.ssh_password_encrypted else None
+            ssh_key = decrypt_value(host.ssh_key_encrypted, settings.secret_key) if host.ssh_key_encrypted else None
+            ssh_password = decrypt_value(host.ssh_password_encrypted, settings.secret_key) if host.ssh_password_encrypted else None
             
             # Connect via SSH
             ssh_service = SSHService(
