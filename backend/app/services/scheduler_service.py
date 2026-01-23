@@ -202,10 +202,8 @@ class UpdateScheduler:
             
             # Connect via SSH
             ssh_service = SSHService(
-                host=host.hostname,
-                user=host.ssh_user,
-                port=host.ssh_port,
-                key=ssh_key,
+                host=host,
+                private_key=ssh_key,
                 password=ssh_password,
             )
             
