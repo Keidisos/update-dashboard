@@ -720,8 +720,12 @@ class DockerService:
             # Get container info
             container = client.containers.get(container_id)
             container_name = container.name
-            image_id = container.image.id
-            image_tags = container.image.tags
+            
+            # Get image info from attrs
+            attrs = container.attrs
+            config = attrs.get("Config", {})
+            image_name = config.get("Image", "")
+            image_id = attrs.get("Image", "")
             
             # Stop container if running (unless force=True which removes anyway)
             if container.status == "running" and not force:
@@ -733,20 +737,20 @@ class DockerService:
             removed_items.append(f"Removed container {container_name}")
             
             # Check if we should remove the image
-            if remove_image:
+            if remove_image and image_id:
                 # Check if any other containers use this image
                 all_containers = client.containers.list(all=True)
-                image_in_use = any(c.image.id == image_id for c in all_containers)
+                image_in_use = any(c.attrs.get("Image") == image_id for c in all_containers)
                 
                 if not image_in_use:
                     try:
                         client.images.remove(image_id, force=False)
-                        removed_items.append(f"Removed image {image_tags[0] if image_tags else image_id[:12]}")
+                        removed_items.append(f"Removed image {image_name or image_id[:12]}")
                     except Exception as e:
                         # Image removal failed, but container is already gone
                         removed_items.append(f"Could not remove image: {str(e)}")
                 else:
-                    removed_items.append(f"Image {image_tags[0] if image_tags else image_id[:12]} still in use by other containers")
+                    removed_items.append(f"Image {image_name or image_id[:12]} still in use by other containers")
             
             return {
                 "success": True,
