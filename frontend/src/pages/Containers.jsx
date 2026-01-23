@@ -16,7 +16,7 @@ import UpdateModal from '../components/Containers/UpdateModal'
 function Containers() {
     const { hostId } = useParams()
     const [searchParams] = useSearchParams()
-    const { hosts, selectedHostId, setSelectedHost, getSelectedHost } = useHostStore()
+    const { hosts, selectedHostId, selectHost, getSelectedHost } = useHostStore()
     const [containers, setContainers] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -36,10 +36,10 @@ function Containers() {
         if (urlHostId && hosts.length > 0) {
             const hostIdNum = parseInt(urlHostId)
             if (hostIdNum && hostIdNum !== selectedHostId) {
-                setSelectedHost(hostIdNum)
+                selectHost(hostIdNum)
             }
         }
-    }, [urlHostId, hosts, selectedHostId, setSelectedHost])
+    }, [urlHostId, hosts, selectedHostId, selectHost])
 
     const currentHostId = hostId || selectedHostId
     const selectedHost = getSelectedHost()
