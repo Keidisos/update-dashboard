@@ -125,12 +125,23 @@ class UpdateScheduler:
                 logger.info(f"  ⏭️ System updates disabled (AUTO_UPDATE_SYSTEM=false)")
                 
         except Exception as e:
-            logger.error(f"  ❌ Error processing host {host.name}: {e}")
-            await send_discord_notification(
-                f"❌ Auto-update failed for **{host.name}**",
-                f"```{str(e)}```",
-                color=0xFF0000
+            # Check if error is due to Docker being unavailable (SSH-only host)
+            error_str = str(e).lower()
+            is_docker_missing = (
+                "docker: command not found" in error_str or
+                "cannot access docker" in error_str or
+                "docker daemon" in error_str and "not running" in error_str
             )
+            
+            if is_docker_missing:
+                logger.warning(f"  ⚠️ Docker not available on {host.name} (SSH-only host)")
+            else:
+                logger.error(f"  ❌ Error processing host {host.name}: {e}")
+                await send_discord_notification(
+                    f"❌ Auto-update failed for **{host.name}**",
+                    f"```{str(e)}```",
+                    color=0xFF0000
+                )
     
     async def _check_containers(self, host: Host):
         """Check and update containers for a host."""
