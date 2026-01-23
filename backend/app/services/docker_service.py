@@ -1019,6 +1019,15 @@ class SSHImageCollection:
         if code != 0:
             raise APIError(f"Failed to pull image: {err}")
         return self.get(name)
+    
+    def remove(self, name: str, force: bool = False):
+        """Remove an image."""
+        cmd = f"docker rmi {name}"
+        if force:
+            cmd += " -f"
+        code, out, err = self.client._exec(cmd)
+        if code != 0:
+            raise APIError(f"Failed to remove image: {err}")
 
 
 class SSHImage:
