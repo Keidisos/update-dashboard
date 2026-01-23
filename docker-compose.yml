@@ -16,18 +16,11 @@ services:
       - ./data:/app/data
       # SSH keys (optional - mount your .ssh directory for SSH connections)
       # - ~/.ssh:/app/.ssh:ro
+    env_file:
+      - .env
     environment:
-      # Required
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production-use-random-string}
-
-      # Database (use absolute path)
+      # Overrides or specific variables if needed
       - DATABASE_URL=sqlite+aiosqlite:////app/data/update_dashboard.db
-
-      # Discord notifications (optional)
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
-
-      # Debug mode (set to true for development)
-      - DEBUG=${DEBUG:-false}
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
