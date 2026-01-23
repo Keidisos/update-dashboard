@@ -355,19 +355,26 @@ function Hosts() {
                                     <div className="flex items-center gap-2">
                                         {/* Status */}
                                         {status && (
-                                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${status.connected
-                                                ? 'bg-emerald-500/20 text-emerald-400'
-                                                : 'bg-red-500/20 text-red-400'
+                                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${!status.connected
+                                                    ? 'bg-red-500/20 text-red-400'
+                                                    : status.error && status.error.includes('Docker')
+                                                        ? 'bg-orange-500/20 text-orange-400'
+                                                        : 'bg-emerald-500/20 text-emerald-400'
                                                 }`}>
-                                                {status.connected ? (
-                                                    <>
-                                                        <Wifi className="w-4 h-4" />
-                                                        Connected
-                                                    </>
-                                                ) : (
+                                                {!status.connected ? (
                                                     <>
                                                         <WifiOff className="w-4 h-4" />
                                                         Disconnected
+                                                    </>
+                                                ) : status.error && status.error.includes('Docker') ? (
+                                                    <>
+                                                        <Wifi className="w-4 h-4" />
+                                                        SSH Only
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Wifi className="w-4 h-4" />
+                                                        Connected
                                                     </>
                                                 )}
                                             </div>
@@ -408,7 +415,11 @@ function Hosts() {
                                     <div className="mt-4 pt-4 border-t border-dark-700/50">
                                         {status.connected ? (
                                             <div className="flex items-center gap-6 text-sm text-dark-400">
-                                                <span>Docker {status.docker_version}</span>
+                                                {status.docker_version ? (
+                                                    <span>Docker {status.docker_version}</span>
+                                                ) : (
+                                                    <span className="text-orange-400/80 text-xs border border-orange-500/20 px-2 py-0.5 rounded">Docker unavailable</span>
+                                                )}
                                                 <span>{status.os_info}</span>
                                             </div>
                                         ) : status.error && (

@@ -79,22 +79,32 @@ async def list_containers(
             registry_service = RegistryService()
             
             for container in containers:
-                # Get local digest
-                local_digest = await docker_service.get_image_digest(container.image)
-                container.local_digest = local_digest
-                
-                if local_digest:
-                    # Check for update
-                    update_available, remote_digest = await registry_service.check_update_available(
-                        container.image,
-                        local_digest
-                    )
-                    container.update_available = update_available
-                    container.remote_digest = remote_digest
+                try:
+                    # Get local digest
+                    local_digest = await docker_service.get_image_digest(container.image)
+                    container.local_digest = local_digest
+                    
+                    if local_digest:
+                        # Check for update
+                        update_available, remote_digest = await registry_service.check_update_available(
+                            container.image,
+                            local_digest
+                        )
+                        container.update_available = update_available
+                        container.remote_digest = remote_digest
+                except Exception as e:
+                    # Ignore individual container update check errors
+                    pass
         
         return containers
         
     except Exception as e:
+        # If Docker is unreachable, return empty list instead of error
+        # This prevents the frontend from showing a scary error message
+        str_error = str(e).lower()
+        if "docker" in str_error or "connection" in str_error or "refused" in str_error:
+            return []
+            
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list containers: {str(e)}"
