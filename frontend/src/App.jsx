@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import Hosts from './pages/Hosts'
 import Containers from './pages/Containers'
 import System from './pages/System'
+import SOC from './pages/SOC'
 
 function App() {
     return (
@@ -14,6 +15,7 @@ function App() {
                     <Route path="hosts" element={<Hosts />} />
                     <Route path="containers/:hostId?" element={<Containers />} />
                     <Route path="system/:hostId?" element={<System />} />
+                    <Route path="soc" element={<SOC />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
             </Routes>

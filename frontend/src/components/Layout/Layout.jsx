@@ -5,7 +5,8 @@ import {
     Container,
     Monitor,
     Settings,
-    RefreshCw
+    RefreshCw,
+    Shield
 } from 'lucide-react'
 import { useHostStore } from '../../store/hostStore'
 import { useEffect } from 'react'
@@ -16,6 +17,7 @@ const navItems = [
     { path: '/hosts', icon: Server, label: 'Hosts' },
     { path: '/containers', icon: Container, label: 'Containers' },
     { path: '/system', icon: Monitor, label: 'System' },
+    { path: '/soc', icon: Shield, label: 'SOC' },
 ]
 
 function Layout() {
@@ -60,8 +62,8 @@ function Layout() {
                                 key={item.path}
                                 to={item.path}
                                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${isActive
-                                        ? 'bg-primary-600/20 text-primary-400 border border-primary-500/30'
-                                        : 'text-dark-300 hover:bg-dark-800 hover:text-white'
+                                    ? 'bg-primary-600/20 text-primary-400 border border-primary-500/30'
+                                    : 'text-dark-300 hover:bg-dark-800 hover:text-white'
                                     }`}
                             >
                                 <Icon className="w-5 h-5" />

@@ -80,4 +80,28 @@ export const systemApi = {
         api.get(`/system/${hostId}/info`),
 }
 
+// ============== SOC API ==============
+
+export const socApi = {
+    getIncidents: (hostId = null, resolved = null) =>
+        api.get('/soc/incidents', { params: { host_id: hostId, resolved } })
+            .then(res => res.data),
+
+    getStats: () =>
+        api.get('/soc/stats')
+            .then(res => res.data),
+
+    analyzeHost: (hostId) =>
+        api.post(`/soc/analyze/${hostId}`)
+            .then(res => res.data),
+
+    resolveIncident: (incidentId, notes) =>
+        api.post(`/soc/incidents/${incidentId}/resolve`, { resolution_notes: notes })
+            .then(res => res.data),
+
+    getHealth: () =>
+        api.get('/soc/health')
+            .then(res => res.data),
+}
+
 export default api
