@@ -213,11 +213,11 @@ class UpdateScheduler:
                 # Check for updates
                 updates = await ssh_service.check_updates()
                 
-                if updates['updates_available'] == 0:
+                if len(updates) == 0:
                     logger.info(f"  ✅ System is up to date")
                     return
                 
-                logger.info(f"  🔄 Found {updates['updates_available']} system update(s)")
+                logger.info(f"  🔄 Found {len(updates)} system update(s)")
                 
                 # Apply updates
                 success, output = await ssh_service.apply_updates()
@@ -226,7 +226,7 @@ class UpdateScheduler:
                     logger.info(f"  ✅ System updates applied successfully")
                     await send_discord_notification(
                         f"✅ System updated on **{host.name}**",
-                        f"{updates['updates_available']} package(s) updated",
+                        f"{len(updates)} package(s) updated",
                         color=0x00FF00
                     )
                 else:
