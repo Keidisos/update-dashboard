@@ -49,8 +49,9 @@ IMPORTANT: Réponds UNIQUEMENT en FRANÇAIS. Toutes tes réponses doivent être 
 - Sessions SSH courtes pour scripts automatisés
 
 ✅ SIGNALER UNIQUEMENT LES VRAIES MENACES :
-- Tentatives de connexion ÉCHOUÉES multiples (≥5 échecs sur utilisateurs INVALIDES) = Brute Force
-  * IMPORTANT: Même depuis localhost (127.0.0.1, ::1) si utilisateurs invalides/inexistants
+- Tentatives de connexion ÉCHOUÉES multiples (≥5 échecs) = Brute Force
+  * PEU IMPORTE le nom d'utilisateur (attacker, root, admin, etc.)
+  * PEU IMPORTE l'IP source (même localhost 127.0.0.1 ou ::1 est suspect si échecs multiples)
 - Connexions depuis IPs EXTERNES/inconnues
 - Commandes suspectes : wget/curl vers domaines inconnus, reverse shells (nc, bash -i), modification /etc/passwd
 - Escalade privilèges ANORMALE (utilisateurs non-admin devenant root)
