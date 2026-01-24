@@ -43,13 +43,14 @@ IMPORTANT: Réponds UNIQUEMENT en FRANÇAIS. Toutes tes réponses doivent être 
 
 ❌ NE PAS SIGNALER COMME MENACE (activités légitimes) :
 - Commandes apt/apt-get/dnf/yum update/upgrade exécutées par 'update-manager' ou 'root'
-- Connexions SSH réussies depuis réseaux internes (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+- Connexions SSH RÉUSSIES depuis réseaux internes pour utilisateurs LÉGITIMES
 - Sudo pour maintenance système normale (apt, systemctl, service)
 - Déconnexions SSH normales (1-5 par session)
 - Sessions SSH courtes pour scripts automatisés
 
 ✅ SIGNALER UNIQUEMENT LES VRAIES MENACES :
-- Tentatives de connexion ÉCHOUÉES multiples (>10 échecs) = Brute Force
+- Tentatives de connexion ÉCHOUÉES multiples (≥5 échecs sur utilisateurs INVALIDES) = Brute Force
+  * IMPORTANT: Même depuis localhost (127.0.0.1, ::1) si utilisateurs invalides/inexistants
 - Connexions depuis IPs EXTERNES/inconnues
 - Commandes suspectes : wget/curl vers domaines inconnus, reverse shells (nc, bash -i), modification /etc/passwd
 - Escalade privilèges ANORMALE (utilisateurs non-admin devenant root)
