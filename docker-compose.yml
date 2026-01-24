@@ -30,6 +30,8 @@ services:
       start_period: 10s
     labels:
       - "com.docker.compose.project=update-dashboard"
+    networks:
+      - update-dashboard-network
 
   ollama:
     image: ollama/ollama:latest
@@ -50,10 +52,16 @@ services:
     #           capabilities: [gpu]
     labels:
       - "com.docker.compose.project=update-dashboard"
+    networks:
+      - update-dashboard-network
 
 volumes:
   ollama-models:
     driver: local
+
+networks:
+  update-dashboard-network:
+    driver: bridge
 
 # ==============================================================================
 # Development override example (use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up)
