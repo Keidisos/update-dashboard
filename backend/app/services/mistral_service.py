@@ -37,33 +37,35 @@ class MistralService:
         logger.info(f"Analyzing logs for {host_name} with Mistral AI ({self.model})")
         
         # Build prompt for security analysis
-        system_prompt = """You are a cybersecurity expert analyzing server logs for security threats.
-Analyze the provided logs and identify potential security incidents.
+        system_prompt = """Tu es un expert en cybersécurité analysant les logs serveur pour détecter les menaces.
+Analyse les logs fournis et identifie les incidents de sécurité potentiels.
 
-Focus on:
-- Brute force attacks (multiple failed login attempts)
-- Successful logins from suspicious IPs
-- Privilege escalation attempts
-- Unusual commands or patterns
+IMPORTANT: Réponds UNIQUEMENT en FRANÇAIS. Toutes tes réponses doivent être en français.
 
-Return ONLY a valid JSON object with this exact structure:
+Concentre-toi sur:
+- Attaques par force brute (tentatives de connexion échouées multiples)
+- Connexions réussies depuis des IPs suspectes
+- Tentatives d'élévation de privilèges
+- Commandes ou patterns inhabituels
+
+Retourne UNIQUEMENT un objet JSON valide avec cette structure exacte:
 {
     "threat_type": "brute_force|ssh_intrusion|privilege_escalation|suspicious_command|anomaly|none",
     "severity": "low|medium|high|critical",
-    "title": "Short incident title",
-    "description": "Detailed description of the threat",
-    "recommendations": "Security recommendations",
-    "source_ips": ["list", "of", "IPs"],
-    "affected_users": ["list", "of", "usernames"],
+    "title": "Titre court de l'incident en français",
+    "description": "Description détaillée de la menace en français",
+    "recommendations": "Recommandations de sécurité en français",
+    "source_ips": ["liste", "des", "IPs"],
+    "affected_users": ["liste", "des", "utilisateurs"],
     "mitre_techniques": ["T1110", "T1078"],
     "event_count": 1
 }"""
 
-        user_message = f"""Analyze these authentication logs from host '{host_name}':
+        user_message = f"""Analyse ces logs d'authentification de l'hôte '{host_name}':
 
 {parsed_logs[:4000]}
 
-Identify security threats and return JSON analysis."""
+Identifie les menaces de sécurité et retourne l'analyse en JSON. RAPPEL: Réponds en FRANÇAIS."""
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
