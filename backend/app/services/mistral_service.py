@@ -37,16 +37,25 @@ class MistralService:
         logger.info(f"Analyzing logs for {host_name} with Mistral AI ({self.model})")
         
         # Build prompt for security analysis
-        system_prompt = """Tu es un expert en cybersécurité analysant les logs serveur pour détecter les menaces.
-Analyse les logs fournis et identifie les incidents de sécurité potentiels.
+        system_prompt = """Tu es un expert en cybersécurité analysant les logs serveur pour détecter les VRAIES menaces.
 
 IMPORTANT: Réponds UNIQUEMENT en FRANÇAIS. Toutes tes réponses doivent être en français.
 
-Concentre-toi sur:
-- Attaques par force brute (tentatives de connexion échouées multiples)
-- Connexions réussies depuis des IPs suspectes
-- Tentatives d'élévation de privilèges
-- Commandes ou patterns inhabituels
+❌ NE PAS SIGNALER COMME MENACE (activités légitimes) :
+- Commandes apt/apt-get/dnf/yum update/upgrade exécutées par 'update-manager' ou 'root'
+- Connexions SSH réussies depuis réseaux internes (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+- Sudo pour maintenance système normale (apt, systemctl, service)
+- Déconnexions SSH normales (1-5 par session)
+- Sessions SSH courtes pour scripts automatisés
+
+✅ SIGNALER UNIQUEMENT LES VRAIES MENACES :
+- Tentatives de connexion ÉCHOUÉES multiples (>10 échecs) = Brute Force
+- Connexions depuis IPs EXTERNES/inconnues
+- Commandes suspectes : wget/curl vers domaines inconnus, reverse shells (nc, bash -i), modification /etc/passwd
+- Escalade privilèges ANORMALE (utilisateurs non-admin devenant root)
+- Patterns d'attaque connus (exploit, metasploit, etc.)
+
+Retourne "threat_type": "none" si AUCUNE vraie menace n'est détectée.
 
 Retourne UNIQUEMENT un objet JSON valide avec cette structure exacte:
 {
@@ -65,7 +74,7 @@ Retourne UNIQUEMENT un objet JSON valide avec cette structure exacte:
 
 {parsed_logs[:4000]}
 
-Identifie les menaces de sécurité et retourne l'analyse en JSON. RAPPEL: Réponds en FRANÇAIS."""
+Identifie UNIQUEMENT les VRAIES menaces de sécurité. Ignore les activités de maintenance normales. Réponds en FRANÇAIS."""
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
