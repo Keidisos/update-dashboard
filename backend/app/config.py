@@ -47,8 +47,17 @@ class Settings(BaseSettings):
     # SOC (Security Operations Center) - Phase 1
     soc_enabled: bool = True
     soc_password: str = "admin"  # Default password, should be changed in production
+    
+    # AI Provider Selection
+    ai_provider: str = "mistral"  # "ollama" or "mistral"
+    
+    # Ollama Configuration (local)
     ollama_host: str = "http://ollama:11434"
     ollama_model: str = "cybersec"
+    
+    # Mistral AI Configuration (cloud)
+    mistral_api_key: str = ""
+    mistral_model: str = "mistral-small-latest"  # Fast and cost-effective
     
     # SOC Phase 2
     soc_analysis_interval: int = 15  # minutes between auto-analysis

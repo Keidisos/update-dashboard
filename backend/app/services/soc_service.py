@@ -1,6 +1,6 @@
 """
 SOC Service - Security Operations Center coordinator.
-Collects logs, analyzes with Ollama, and creates security incidents.
+Collects logs, analyzes with AI (Ollama or Mistral), and creates security incidents.
 """
 
 import logging
@@ -13,6 +13,7 @@ from sqlalchemy import select
 from app.models import Host, SecurityIncident
 from app.models.security_incident import SeverityLevel, IncidentCategory
 from app.services.ollama_service import OllamaService
+from app.services.mistral_service import MistralService
 from app.services.log_parser_service import LogParserService
 from app.services.ssh_service import SSHService
 from app.utils import decrypt_value
@@ -25,7 +26,16 @@ class SOCService:
     """Main SOC service coordinating security analysis."""
     
     def __init__(self):
-        self.ollama = OllamaService()
+        settings = get_settings()
+        
+        # Select AI provider based on configuration
+        if settings.ai_provider == "mistral":
+            logger.info("🧠 Using Mistral AI for log analysis")
+            self.ai_service = MistralService()
+        else:
+            logger.info("🧠 Using Ollama for log analysis")
+            self.ai_service = OllamaService()
+        
         self.parser = LogParserService()
     
     async def analyze_host(
@@ -68,8 +78,8 @@ class SOCService:
                 logger.info(f"Insufficient log data from {host.name}")
                 return None
             
-            # Step 3: Analyze with Ollama
-            analysis = await self.ollama.analyze_auth_logs(parsed_logs, host.name)
+            # Step 3: Analyze with AI (Ollama or Mistral)
+            analysis = await self.ai_service.analyze_auth_logs(parsed_logs, host.name)
             
             # Step 4: Create incident if threat detected
             if analysis.get('threat_type') and analysis['threat_type'] != 'none':

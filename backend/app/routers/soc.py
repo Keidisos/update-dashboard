@@ -190,15 +190,30 @@ async def resolve_incident(
 
 @router.get("/health")
 async def health_check():
-    """Check if Ollama is available."""
-    ollama = OllamaService()
-    is_connected = await ollama.check_connection()
+    """Check if AI service (Ollama or Mistral) is available."""
+    from app.config import get_settings
+    settings = get_settings()
     
-    return {
-        "ollama_connected": is_connected,
-        "ollama_host": ollama.host,
-        "ollama_model": ollama.model
-    }
+    if settings.ai_provider == "mistral":
+        from app.services.mistral_service import MistralService
+        ai_service = MistralService()
+        is_connected = await ai_service.check_connection()
+        
+        return {
+            "ai_provider": "mistral",
+            "ai_connected": is_connected,
+            "mistral_model": settings.mistral_model
+        }
+    else:
+        ollama = OllamaService()
+        is_connected = await ollama.check_connection()
+        
+        return {
+            "ai_provider": "ollama",
+            "ai_connected": is_connected,
+            "ollama_host": ollama.host,
+            "ollama_model": ollama.model
+        }
 
 
 @router.post("/auth")
