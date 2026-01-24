@@ -34,14 +34,14 @@ class LogParserService:
         ]
         
         filtered_lines = []
-        for line in lines[-500:]:  # Last 500 lines only
+        # Process ALL lines since we increased fetch size
+        for line in lines:
             if any(keyword in line for keyword in relevant_keywords):
                 filtered_lines.append(line)
         
-        # Take the most recent max_lines
-        recent_lines = filtered_lines[-max_lines:]
-        
-        return '\n'.join(recent_lines)
+        # INCREASE LIMIT: Return up to 5000 chars of relevant logs
+        # This ensures we have enough context even with noisy logs
+        return '\n'.join(filtered_lines[-500:])  # Keep last 500 RELEVANT lines
     
     @staticmethod
     def extract_failed_logins(auth_log: str) -> List[Dict[str, Any]]:

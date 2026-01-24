@@ -113,8 +113,8 @@ class SOCService:
             await ssh_service.connect()
             
             # Try multiple log locations without sudo first
-            # Use grep for broader matching instead of strict tags
-            cmd = "journalctl -n 1000 --no-pager 2>/dev/null | grep -i 'sshd\\|sudo\\|su:' || tail -n 1000 /var/log/auth.log 2>/dev/null || tail -n 1000 /var/log/secure 2>/dev/null || echo 'NO_LOGS'"
+            # Fetch MORE lines (2000) and do NOT filter with grep to avoid missing subtle logs
+            cmd = "journalctl -n 2000 --no-pager 2>/dev/null || tail -n 2000 /var/log/auth.log 2>/dev/null || tail -n 2000 /var/log/secure 2>/dev/null || echo 'NO_LOGS'"
             exit_code, stdout, stderr = await ssh_service.run_command(cmd, sudo=False)
             
             await ssh_service.disconnect()
