@@ -4,7 +4,7 @@ Cryptographic utilities for SSH key encryption.
 
 import base64
 import secrets
-from typing import Tuple
+
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes

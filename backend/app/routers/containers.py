@@ -92,7 +92,7 @@ async def list_containers(
                         )
                         container.update_available = update_available
                         container.remote_digest = remote_digest
-                except Exception as e:
+                except Exception:
                     # Ignore individual container update check errors
                     pass
         

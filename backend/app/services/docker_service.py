@@ -292,9 +292,6 @@ class DockerService:
             if self.host.connection_type == ConnectionType.SSH:
                 # Use paramiko to execute docker commands over SSH
                 import paramiko
-                from io import StringIO
-                import tempfile
-                import os
                 
                 # Create SSH client with auto-add policy (no host key verification)
                 ssh_client = paramiko.SSHClient()
@@ -494,7 +491,7 @@ class DockerService:
         created_str = attrs.get("Created", "")
         try:
             created = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
-        except:
+        except ValueError:
             created = datetime.utcnow()
             
         return ContainerInfo(
@@ -577,7 +574,7 @@ class DockerService:
             
             # Environment
             for env in config.get("Env") or []:
-                create_parts.append(f"-e")
+                create_parts.append("-e")
                 create_parts.append(f"'{env}'")
             
             # Ports
@@ -1505,7 +1502,7 @@ class SSHNetwork:
         try:
             failed_container = client.containers.get(original_name)
             failed_container.remove(force=True)
-            logs.append(f"Removed failed container")
+            logs.append("Removed failed container")
         except NotFound:
             pass
             

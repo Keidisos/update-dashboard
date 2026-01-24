@@ -6,7 +6,7 @@ to check if newer image versions are available.
 """
 
 import logging
-import re
+
 import base64
 from typing import Optional, Tuple
 from dataclasses import dataclass

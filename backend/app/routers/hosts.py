@@ -28,7 +28,7 @@ async def list_hosts(
     """List all configured hosts."""
     query = select(Host)
     if not include_inactive:
-        query = query.where(Host.is_active == True)
+        query = query.where(Host.is_active)
     
     result = await db.execute(query)
     hosts = result.scalars().all()
@@ -186,7 +186,7 @@ async def get_host_status(host_id: int, db: AsyncSession = Depends(get_db)):
     if host.ssh_key_encrypted:
         try:
             ssh_key = decrypt_value(host.ssh_key_encrypted, settings.secret_key)
-        except Exception as e:
+        except Exception:
             pass
             
     if host.ssh_password_encrypted:

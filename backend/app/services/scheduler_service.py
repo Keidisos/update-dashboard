@@ -2,10 +2,8 @@
 Background scheduler service for automatic update checks and application.
 """
 
-import asyncio
 import logging
 from datetime import datetime
-from typing import List
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -38,7 +36,7 @@ class UpdateScheduler:
             logger.info("🔕 Scheduler is disabled (AUTO_CHECK_ENABLED=false)")
             return
             
-        logger.info(f"🚀 Starting scheduler")
+        logger.info("🚀 Starting scheduler")
         
         # Add auto-update check job if enabled
         if settings.auto_check_enabled:
@@ -119,13 +117,13 @@ class UpdateScheduler:
             if settings.auto_update_containers:
                 await self._check_containers(host)
             else:
-                logger.info(f"  ⏭️ Container updates disabled (AUTO_UPDATE_CONTAINERS=false)")
+                logger.info("  ⏭️ Container updates disabled (AUTO_UPDATE_CONTAINERS=false)")
             
             # Check system updates if enabled
             if settings.auto_update_system:
                 await self._check_system(host)
             else:
-                logger.info(f"  ⏭️ System updates disabled (AUTO_UPDATE_SYSTEM=false)")
+                logger.info("  ⏭️ System updates disabled (AUTO_UPDATE_SYSTEM=false)")
                 
         except Exception as e:
             # Check if error is due to Docker being unavailable (SSH-only host)
@@ -148,7 +146,7 @@ class UpdateScheduler:
     
     async def _check_containers(self, host: Host):
         """Check and update containers for a host."""
-        logger.info(f"  🐳 Checking containers...")
+        logger.info("  🐳 Checking containers...")
         
         try:
             # Decrypt credentials
@@ -207,7 +205,7 @@ class UpdateScheduler:
     
     async def _check_system(self, host: Host):
         """Check and update system packages for a host."""
-        logger.info(f"  💻 Checking system updates...")
+        logger.info("  💻 Checking system updates...")
         
         try:
             # Decrypt credentials
@@ -228,7 +226,7 @@ class UpdateScheduler:
                 updates = await ssh_service.check_updates()
                 
                 if len(updates) == 0:
-                    logger.info(f"  ✅ System is up to date")
+                    logger.info("  ✅ System is up to date")
                     return
                 
                 logger.info(f"  🔄 Found {len(updates)} system update(s)")
@@ -237,17 +235,17 @@ class UpdateScheduler:
                 success, output = await ssh_service.apply_updates()
                 
                 if success:
-                    logger.info(f"  ✅ System updates applied successfully")
+                    logger.info("  ✅ System updates applied successfully")
                     await send_discord_notification(
                         f"✅ System updated on **{host.name}**",
                         f"{len(updates)} package(s) updated",
                         color=0x00FF00
                     )
                 else:
-                    logger.error(f"  ❌ System update failed")
+                    logger.error("  ❌ System update failed")
                     await send_discord_notification(
                         f"❌ System update failed on **{host.name}**",
-                        f"Check logs for details",
+                        "Check logs for details",
                         color=0xFF0000
                     )
                     
@@ -258,56 +256,7 @@ class UpdateScheduler:
             logger.error(f"  ❌ System check failed: {e}")
             raise
 
-    async def _analyze_all_hosts_soc(self):
-        """Analyze all activeHosts for security threats (SOC)."""
-        try:
-            logger.info("=" * 60)
-            logger.info(f"🛡️ Starting SOC security analysis at {datetime.now()}")
-            logger.info("=" * 60)
-            
-            # Import SOC service here to avoid circular imports
-            from app.services.soc_service import SOCService
-            
-            soc_service = SOCService()
-            
-            # Get all active hosts
-            async with async_session_maker() as session:
-                result = await session.execute(
-                    select(Host).where(Host.is_active == True)
-                )
-                hosts = list(result.scalars().all())
-                
-                logger.info(f"Found {len(hosts)} active hosts to analyze")
-                
-                incidents_created = 0
-                for host in hosts:
-                    try:
-                        logger.info(f"🔍 Analyzing host: {host.name}")
-                        incident = await soc_service.analyze_host(
-                            host=host,
-                            db=session
-                        )
-                        
-                        if incident:
-                            incidents_created += 1
-                            logger.info(f"  ⚠️ Created incident {incident.id} (Severity: {incident.severity.value})")
-                        else:
-                            logger.info(f"  ✅ No threats detected")
-                        
-                    except Exception as e:
-                        logger.error(f"  ❌ Failed to analyze {host.name}: {e}")
-                        continue
-                
-                logger.info("=" * 60)
-                logger.info(
-                    f"✅ SOC analysis completed. "
-                    f"Analyzed {len(hosts)} hosts, created {incidents_created} incidents"
-                )
-                logger.info("=" * 60)
-                
-        except Exception as e:
-            logger.error(f"SOC analysis job failed: {e}")
-            raise
+
 
 
 # Global scheduler instance

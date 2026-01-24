@@ -4,7 +4,7 @@ Sends formatted embeds to Discord webhook for critical security incidents.
 """
 
 import logging
-from typing import Optional, List
+from typing import List
 from datetime import datetime
 
 import httpx

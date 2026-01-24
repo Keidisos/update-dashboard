@@ -10,7 +10,7 @@ import logging
 import asyncio
 from typing import Optional, List, Tuple
 from dataclasses import dataclass
-from io import StringIO
+
 
 import asyncssh
 from asyncssh import SSHClientConnection, SSHCompletedProcess
@@ -222,7 +222,7 @@ class SSHService:
                     new_version=new_version,
                     repository=name_repo.split("/")[1] if "/" in name_repo else None
                 ))
-            except (IndexError, ValueError) as e:
+            except (IndexError, ValueError):
                 logger.warning(f"Failed to parse apt update line: {line}")
                 continue
                 
