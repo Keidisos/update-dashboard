@@ -77,6 +77,10 @@ Retourne UNIQUEMENT un objet JSON valide avec cette structure exacte:
 
 Identifie UNIQUEMENT les VRAIES menaces de sécurité. Ignore les activités de maintenance normales. Réponds en FRANÇAIS."""
 
+        # DEBUG: Print logs sent to AI
+        print(f"DEBUG: Sending {len(parsed_logs)} chars of logs to Mistral")
+        print(f"DEBUG: Last 1000 chars: {parsed_logs[-1000:]}")
+
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
