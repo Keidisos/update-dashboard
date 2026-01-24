@@ -113,8 +113,8 @@ class SOCService:
             await ssh_service.connect()
             
             # Try multiple log locations without sudo first
-            # Priority to journalctl with specific tags (sshd, ssh, sudo, su) to avoid getting only system noise
-            cmd = "journalctl -t sshd -t ssh -t sudo -t su -n 500 --no-pager 2>/dev/null || tail -n 500 /var/log/auth.log 2>/dev/null || tail -n 500 /var/log/secure 2>/dev/null || echo 'NO_LOGS'"
+            # Use grep for broader matching instead of strict tags
+            cmd = "journalctl -n 1000 --no-pager 2>/dev/null | grep -i 'sshd\\|sudo\\|su:' || tail -n 1000 /var/log/auth.log 2>/dev/null || tail -n 1000 /var/log/secure 2>/dev/null || echo 'NO_LOGS'"
             exit_code, stdout, stderr = await ssh_service.run_command(cmd, sudo=False)
             
             await ssh_service.disconnect()
