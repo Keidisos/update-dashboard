@@ -135,7 +135,7 @@ class SOCService:
         log_excerpt: str,
         db: AsyncSession
     ) -> SecurityIncident:
-        """Create a SecurityIncident from AI analysis."""
+        """Create a SecurityIncident from AI analysis with deduplication."""
         
         # Map threat_type to IncidentCategory
         category_map = {
@@ -153,7 +153,57 @@ class SOCService:
         
         # Map severity string to enum
         severity = SeverityLevel(analysis.get('severity', 'low').lower())
+        source_ips = analysis.get('source_ips', [])
         
+        # ===== DÉDUPLICATION =====
+        # Vérifier si un incident similaire existe dans les dernières 24h
+        from datetime import timedelta
+        from sqlalchemy import and_
+        
+        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        
+        # Chercher incidents existants avec même hôte + catégorie dans les 24h
+        if source_ips:
+            existing_query = select(SecurityIncident).where(
+                and_(
+                    SecurityIncident.host_id == host_id,
+                    SecurityIncident.category == category,
+                    SecurityIncident.detected_at >= cutoff_time,
+                    SecurityIncident.resolved == False
+                )
+            )
+            
+            result = await db.execute(existing_query)
+            existing_incidents = list(result.scalars().all())
+            
+            # Chercher si une IP source correspond
+            for existing in existing_incidents:
+                existing_ips = set(existing.source_ips or [])
+                new_ips = set(source_ips)
+                
+                # Si intersection non vide → même attaque
+                if existing_ips & new_ips:
+                    # MISE À JOUR de l'incident existant
+                    existing.event_count += analysis.get('event_count', 1)
+                    existing.updated_at = datetime.utcnow()
+                    
+                    # Mettre à jour la sévérité si plus grave
+                    if self._severity_weight(severity) > self._severity_weight(existing.severity):
+                        existing.severity = severity
+                        logger.info(f"⬆️ Incident #{existing.id} upgraded to {severity.value}")
+                    
+                    await db.commit()
+                    await db.refresh(existing)
+                    
+                    logger.info(
+                        f"✅ Incident dédupliqué #{existing.id} "
+                        f"(event_count: {existing.event_count}, IPs: {list(existing_ips & new_ips)})"
+                    )
+                    
+                    # NE PAS notifier Discord pour déduplication
+                    return existing
+        
+        # ===== NOUVEL INCIDENT =====
         incident = SecurityIncident(
             host_id=host_id,
             severity=severity,
@@ -163,7 +213,7 @@ class SOCService:
             ai_analysis=analysis.get('description', ''),
             ai_recommendations=analysis.get('recommendations', ''),
             log_excerpt=log_excerpt[:5000],  # Limit size
-            source_ips=analysis.get('source_ips', []),
+            source_ips=source_ips,
             affected_users=analysis.get('affected_users', []),
             mitre_techniques=analysis.get('mitre_techniques', []),
             event_count=analysis.get('event_count', 1),
@@ -175,7 +225,9 @@ class SOCService:
         await db.commit()
         await db.refresh(incident)
         
-        # Phase 2: Correlation and Discord integration
+        logger.info(f"🆕 Nouvel incident #{incident.id} créé (Severity: {severity.value})")
+        
+        # Phase 2: Correlation and Discord integration (SEULEMENT pour nouveaux incidents)
         try:
             # Import services here to avoid circular imports
             from app.services.correlation_engine import CorrelationEngine
@@ -227,6 +279,16 @@ class SOCService:
         
         result = await db.execute(query)
         return list(result.scalars().all())
+    
+    def _severity_weight(self, severity: SeverityLevel) -> int:
+        """Get numeric weight for severity comparison."""
+        weights = {
+            SeverityLevel.LOW: 1,
+            SeverityLevel.MEDIUM: 2,
+            SeverityLevel.HIGH: 3,
+            SeverityLevel.CRITICAL: 4,
+        }
+        return weights.get(severity, 0)
     
     async def resolve_incident(
         self,
