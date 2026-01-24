@@ -191,3 +191,31 @@ async def health_check():
         "ollama_host": ollama.host,
         "ollama_model": ollama.model
     }
+
+
+@router.post("/auth")
+async def authenticate(password: str):
+    """
+    Authenticate for SOC access.
+    
+    Args:
+        password: Password to validate
+        
+    Returns:
+        Dict with success status and token
+    """
+    settings = get_settings()
+    
+    if password == settings.soc_password:
+        # In production, generate a proper JWT token
+        # For now, return a simple success token
+        return {
+            "success": True,
+            "token": "authenticated",
+            "message": "Authentication successful"
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid password"
+        )

@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     # SOC (Security Operations Center)
     soc_enabled: bool = True
     soc_analysis_interval: int = 10  # minutes
+    soc_password: str = "admin"  # Default password, should be changed in production
     ollama_host: str = "http://ollama:11434"
     ollama_model: str = "cybersec"
 
