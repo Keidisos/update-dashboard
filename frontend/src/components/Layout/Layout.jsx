@@ -6,9 +6,12 @@ import {
     Monitor,
     Settings,
     RefreshCw,
-    Shield
+    Shield,
+    Lock,
+    LogOut
 } from 'lucide-react'
 import { useHostStore } from '../../store/hostStore'
+import { useAuth } from '../../context/AuthContext'
 import { useEffect } from 'react'
 import HostSelector from '../Hosts/HostSelector'
 
@@ -17,12 +20,13 @@ const navItems = [
     { path: '/hosts', icon: Server, label: 'Hosts' },
     { path: '/containers', icon: Container, label: 'Containers' },
     { path: '/system', icon: Monitor, label: 'System' },
-    { path: '/soc', icon: Shield, label: 'SOC' },
+    { path: '/soc', icon: Shield, label: 'SOC', protected: true },
 ]
 
 function Layout() {
     const location = useLocation()
     const { fetchHosts, loading } = useHostStore()
+    const { isAuthenticated, logout } = useAuth()
 
     useEffect(() => {
         fetchHosts()
@@ -67,14 +71,26 @@ function Layout() {
                                     }`}
                             >
                                 <Icon className="w-5 h-5" />
-                                <span className="font-medium">{item.label}</span>
+                                <span className="font-medium flex-1">{item.label}</span>
+                                {item.protected && !isAuthenticated && (
+                                    <Lock className="w-4 h-4 text-gray-500" />
+                                )}
                             </NavLink>
                         )
                     })}
                 </nav>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-dark-800">
+                <div className="p-4 border-t border-dark-800 space-y-2">
+                    {isAuthenticated && (
+                        <button
+                            onClick={logout}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-dark-400 hover:bg-dark-800 hover:text-white transition-all duration-200"
+                        >
+                            <LogOut className="w-5 h-5" />
+                            <span className="font-medium">Logout SOC</span>
+                        </button>
+                    )}
                     <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-dark-400 hover:bg-dark-800 hover:text-white transition-all duration-200">
                         <Settings className="w-5 h-5" />
                         <span className="font-medium">Settings</span>
