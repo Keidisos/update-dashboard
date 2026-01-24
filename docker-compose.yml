@@ -30,38 +30,6 @@ services:
       start_period: 10s
     labels:
       - "com.docker.compose.project=update-dashboard"
-    networks:
-      - update-dashboard-network
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: update-dashboard-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-models:/root/.ollama
-      - ./ollama:/app/ollama
-    restart: unless-stopped
-    # Uncomment if you have a GPU (NVIDIA)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    labels:
-      - "com.docker.compose.project=update-dashboard"
-    networks:
-      - update-dashboard-network
-
-volumes:
-  ollama-models:
-    driver: local
-
-networks:
-  update-dashboard-network:
-    driver: bridge
 
 # ==============================================================================
 # Development override example (use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up)
