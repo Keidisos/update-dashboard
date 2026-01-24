@@ -73,13 +73,9 @@ Retourne UNIQUEMENT un objet JSON valide avec cette structure exacte:
 
         user_message = f"""Analyse ces logs d'authentification de l'hôte '{host_name}':
 
-{parsed_logs[:4000]}
+{parsed_logs[-4000:]}
 
 Identifie UNIQUEMENT les VRAIES menaces de sécurité. Ignore les activités de maintenance normales. Réponds en FRANÇAIS."""
-
-        # DEBUG: Print logs sent to AI
-        print(f"DEBUG: Sending {len(parsed_logs)} chars of logs to Mistral")
-        print(f"DEBUG: First 500 chars: {parsed_logs[:500]}")
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -107,8 +103,6 @@ Identifie UNIQUEMENT les VRAIES menaces de sécurité. Ignore les activités de 
                 # Extract AI response
                 ai_response = result["choices"][0]["message"]["content"]
                 logger.debug(f"Mistral AI response: {ai_response}")
-                print(f"DEBUG: Mistral AI Raw Response: {ai_response}")
-                print(f"DEBUG: Mistral AI Raw Response: {ai_response}")
                 
                 # Parse JSON response
                 analysis = json.loads(ai_response)
