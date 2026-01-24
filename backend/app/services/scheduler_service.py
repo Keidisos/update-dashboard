@@ -34,8 +34,8 @@ class UpdateScheduler:
         
     def start(self):
         """Start the scheduler."""
-        if not settings.auto_check_enabled and not settings.soc_scheduler_enabled:
-            logger.info("🔕 Scheduler is disabled (AUTO_CHECK_ENABLED=false and SOC_SCHEDULER_ENABLED=false)")
+        if not settings.auto_check_enabled:
+            logger.info("🔕 Scheduler is disabled (AUTO_CHECK_ENABLED=false)")
             return
             
         logger.info(f"🚀 Starting scheduler")
@@ -52,18 +52,6 @@ class UpdateScheduler:
                 max_instances=1,  # Prevent concurrent runs
 
         )
-        
-        # Add SOC analysis job if enabled
-        if settings.soc_enabled and settings.soc_scheduler_enabled:
-            logger.info(f"🛡️ SOC analysis interval: {settings.soc_analysis_interval} minutes")
-            self.scheduler.add_job(
-                self._analyze_all_hosts_soc,
-                trigger=IntervalTrigger(minutes=settings.soc_analysis_interval),
-                id='soc_analysis',
-                name='SOC Security Analysis',
-                replace_existing=True,
-                max_instances=1  # Prevent concurrent runs
-            )
         
         self.scheduler.start()
         self.is_running = True

@@ -6,7 +6,6 @@ import {
     Monitor,
     Settings,
     RefreshCw,
-    Shield,
     Lock,
     LogOut
 } from 'lucide-react'
@@ -20,7 +19,6 @@ const navItems = [
     { path: '/hosts', icon: Server, label: 'Hosts' },
     { path: '/containers', icon: Container, label: 'Containers' },
     { path: '/system', icon: Monitor, label: 'System' },
-    { path: '/soc', icon: Shield, label: 'SOC', protected: true },
 ]
 
 function Layout() {
@@ -88,7 +86,7 @@ function Layout() {
                             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-dark-400 hover:bg-dark-800 hover:text-white transition-all duration-200"
                         >
                             <LogOut className="w-5 h-5" />
-                            <span className="font-medium">Logout SOC</span>
+                            <span className="font-medium">Logout</span>
                         </button>
                     )}
                     <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-dark-400 hover:bg-dark-800 hover:text-white transition-all duration-200">

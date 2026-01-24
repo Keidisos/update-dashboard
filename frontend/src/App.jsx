@@ -4,7 +4,6 @@ import Dashboard from './pages/Dashboard'
 import Hosts from './pages/Hosts'
 import Containers from './pages/Containers'
 import System from './pages/System'
-import SOC from './pages/SOC'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 
@@ -18,14 +17,6 @@ function App() {
                         <Route path="hosts" element={<Hosts />} />
                         <Route path="containers/:hostId?" element={<Containers />} />
                         <Route path="system/:hostId?" element={<System />} />
-                        <Route
-                            path="soc"
-                            element={
-                                <ProtectedRoute>
-                                    <SOC />
-                                </ProtectedRoute>
-                            }
-                        />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Route>
                 </Routes>

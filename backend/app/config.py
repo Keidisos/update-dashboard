@@ -44,24 +44,8 @@ class Settings(BaseSettings):
     auto_update_containers: bool = False
     auto_update_system: bool = False
     
-    # SOC (Security Operations Center)
-    soc_enabled: bool = True
-    soc_password: str = "admin"  # Default password, should be changed in production
-    
-    # Mistral AI Configuration
-    mistral_api_key: str = ""
-    mistral_model: str = "mistral-small-latest"  # Fast and cost-effective
-    
-    # SOC Phase 2
-    soc_analysis_interval: int = 15  # minutes between auto-analysis
-    soc_scheduler_enabled: bool = True  # auto-start scheduler on boot
-    soc_container_logs_enabled: bool = True  # analyze container logs
-    soc_correlation_enabled: bool = True  # enable incident correlation
-    soc_correlation_window: int = 60  # minutes for correlation window
-    
     # Discord Notifications
     discord_webhook_url: Optional[str] = None
-    discord_notify_severity: str = "critical,high"  # severities to notify
     discord_enabled: bool = True
 
 
