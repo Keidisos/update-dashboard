@@ -71,6 +71,12 @@ class SecurityIncident(Base):
     # Event count (for aggregated incidents)
     event_count: Mapped[int] = mapped_column(Integer, default=1)
     
+    # Phase 2: Correlation fields
+    correlation_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)  # UUID for grouped incidents
+    parent_incident_id: Mapped[Optional[int]] = mapped_column(ForeignKey("security_incidents.id"), nullable=True)
+    threat_score: Mapped[float] = mapped_column(default=0.0)  # Calculated threat score (0-100)
+    auto_resolved: Mapped[bool] = mapped_column(Boolean, default=False)  # Auto-resolved by correlation
+    
     # Status
     resolved: Mapped[bool] = mapped_column(Boolean, default=False)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

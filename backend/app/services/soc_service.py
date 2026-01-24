@@ -175,6 +175,36 @@ class SOCService:
         await db.commit()
         await db.refresh(incident)
         
+        # Phase 2: Correlation and Discord integration
+        try:
+            # Import services here to avoid circular imports
+            from app.services.correlation_engine import CorrelationEngine
+            from app.services.discord_service import DiscordService
+            
+            # Correlate with recent incidents
+            correlation_engine = CorrelationEngine()
+            correlation_id = await correlation_engine.correlate_incidents(incident, db)
+            
+            if correlation_id:
+                logger.info(f"Incident {incident.id} correlated with group {correlation_id}")
+            
+            # Send Discord notification
+            discord_service = DiscordService()
+            
+            # Get host name for notification
+            from app.models import Host
+            host_result = await db.execute(select(Host).where(Host.id == host_id))
+            host = host_result.scalar_one_or_none()
+            host_name = host.name if host else "Unknown"
+            
+            if discord_service.should_notify(incident):
+                await discord_service.send_incident_alert(incident, host_name)
+                logger.info(f"Discord alert sent for incident {incident.id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to correlate/notify incident: {e}")
+            # Don't fail the whole incident creation if correlation/notification fails
+        
         return incident
     
     async def get_recent_incidents(

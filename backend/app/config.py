@@ -44,12 +44,24 @@ class Settings(BaseSettings):
     auto_update_containers: bool = False
     auto_update_system: bool = False
     
-    # SOC (Security Operations Center)
+    # SOC (Security Operations Center) - Phase 1
     soc_enabled: bool = True
-    soc_analysis_interval: int = 10  # minutes
     soc_password: str = "admin"  # Default password, should be changed in production
     ollama_host: str = "http://ollama:11434"
     ollama_model: str = "cybersec"
+    
+    # SOC Phase 2
+    soc_analysis_interval: int = 15  # minutes between auto-analysis
+    soc_scheduler_enabled: bool = True  # auto-start scheduler on boot
+    soc_container_logs_enabled: bool = True  # analyze container logs
+    soc_correlation_enabled: bool = True  # enable incident correlation
+    soc_correlation_window: int = 60  # minutes for correlation window
+    
+    # Discord Notifications
+    discord_webhook_url: Optional[str] = None
+    discord_notify_severity: str = "critical,high"  # severities to notify
+    discord_enabled: bool = True
+
 
 
 @lru_cache

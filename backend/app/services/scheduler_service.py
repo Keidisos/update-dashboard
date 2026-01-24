@@ -34,21 +34,36 @@ class UpdateScheduler:
         
     def start(self):
         """Start the scheduler."""
-        if not settings.auto_check_enabled:
-            logger.info("🔕 Auto-update scheduler is disabled (AUTO_CHECK_ENABLED=false)")
+        if not settings.auto_check_enabled and not settings.soc_scheduler_enabled:
+            logger.info("🔕 Scheduler is disabled (AUTO_CHECK_ENABLED=false and SOC_SCHEDULER_ENABLED=false)")
             return
             
-        logger.info(f"🚀 Starting auto-update scheduler (interval: {settings.auto_check_interval_minutes} minutes)")
+        logger.info(f"🚀 Starting scheduler")
         
-        # Add the periodic job
-        self.scheduler.add_job(
-            self._check_and_update_all_hosts,
-            trigger=IntervalTrigger(minutes=settings.auto_check_interval_minutes),
-            id='auto_update_check',
-            name='Auto Update Check',
-            replace_existing=True,
-            max_instances=1,  # Prevent concurrent runs
+        # Add auto-update check job if enabled
+        if settings.auto_check_enabled:
+            logger.info(f"📅 Auto-update check interval: {settings.auto_check_interval_minutes} minutes")
+            self.scheduler.add_job(
+                self._check_and_update_all_hosts,
+                trigger=IntervalTrigger(minutes=settings.auto_check_interval_minutes),
+                id='auto_update_check',
+                name='Auto Update Check',
+                replace_existing=True,
+                max_instances=1,  # Prevent concurrent runs
+
         )
+        
+        # Add SOC analysis job if enabled
+        if settings.soc_enabled and settings.soc_scheduler_enabled:
+            logger.info(f"🛡️ SOC analysis interval: {settings.soc_analysis_interval} minutes")
+            self.scheduler.add_job(
+                self._analyze_all_hosts_soc,
+                trigger=IntervalTrigger(minutes=settings.soc_analysis_interval),
+                id='soc_analysis',
+                name='SOC Security Analysis',
+                replace_existing=True,
+                max_instances=1  # Prevent concurrent runs
+            )
         
         self.scheduler.start()
         self.is_running = True
@@ -253,6 +268,57 @@ class UpdateScheduler:
                 
         except Exception as e:
             logger.error(f"  ❌ System check failed: {e}")
+            raise
+
+    async def _analyze_all_hosts_soc(self):
+        """Analyze all activeHosts for security threats (SOC)."""
+        try:
+            logger.info("=" * 60)
+            logger.info(f"🛡️ Starting SOC security analysis at {datetime.now()}")
+            logger.info("=" * 60)
+            
+            # Import SOC service here to avoid circular imports
+            from app.services.soc_service import SOCService
+            
+            soc_service = SOCService()
+            
+            # Get all active hosts
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(Host).where(Host.is_active == True)
+                )
+                hosts = list(result.scalars().all())
+                
+                logger.info(f"Found {len(hosts)} active hosts to analyze")
+                
+                incidents_created = 0
+                for host in hosts:
+                    try:
+                        logger.info(f"🔍 Analyzing host: {host.name}")
+                        incident = await soc_service.analyze_host(
+                            host=host,
+                            db=session
+                        )
+                        
+                        if incident:
+                            incidents_created += 1
+                            logger.info(f"  ⚠️ Created incident {incident.id} (Severity: {incident.severity.value})")
+                        else:
+                            logger.info(f"  ✅ No threats detected")
+                        
+                    except Exception as e:
+                        logger.error(f"  ❌ Failed to analyze {host.name}: {e}")
+                        continue
+                
+                logger.info("=" * 60)
+                logger.info(
+                    f"✅ SOC analysis completed. "
+                    f"Analyzed {len(hosts)} hosts, created {incidents_created} incidents"
+                )
+                logger.info("=" * 60)
+                
+        except Exception as e:
+            logger.error(f"SOC analysis job failed: {e}")
             raise
 
 

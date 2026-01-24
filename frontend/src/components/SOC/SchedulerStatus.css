@@ -1,0 +1,129 @@
+.scheduler-status {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+.scheduler-status.running {
+    border-color: #28a745;
+    box-shadow: 0 0 12px rgba(40, 167, 69, 0.2);
+}
+
+.scheduler-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #333;
+}
+
+.scheduler-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.scheduler-title svg {
+    color: #00d4ff;
+}
+
+.scheduler-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-running {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.badge-stopped {
+    background: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+}
+
+.scheduler-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scheduler-info {
+    display: flex;
+    gap: 32px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-label {
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.info-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.scheduler-actions {
+    margin-left: auto;
+}
+
+.btn-start,
+.btn-stop {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-start {
+    background: #28a745;
+    color: #fff;
+}
+
+.btn-start:hover:not(:disabled) {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-stop {
+    background: #dc3545;
+    color: #fff;
+}
+
+.btn-stop:hover:not(:disabled) {
+    background: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-start:disabled,
+.btn-stop:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

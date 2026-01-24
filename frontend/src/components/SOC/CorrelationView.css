@@ -1,0 +1,264 @@
+.correlation-view {
+    margin-bottom: 24px;
+}
+
+.correlation-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+    border-radius: 12px;
+    color: #888;
+    text-align: center;
+}
+
+.correlation-empty svg {
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.correlation-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.correlation-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #fff;
+    font-weight: 600;
+}
+
+.correlation-header svg {
+    color: #00d4ff;
+}
+
+.correlation-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.correlation-card {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.correlation-card:hover {
+    border-color: #00d4ff;
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+}
+
+.correlation-card.expanded {
+    border-color: #00d4ff;
+}
+
+.correlation-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.correlation-info {
+    flex: 1;
+}
+
+.correlation-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.correlation-meta {
+    display: flex;
+    gap: 16px;
+}
+
+.meta-item {
+    font-size: 0.9rem;
+    color: #999;
+}
+
+.threat-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 16px;
+    border: 2px solid;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.threat-score span {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.correlation-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #999;
+}
+
+.stat-value {
+    font-size: 0.95rem;
+    color: #fff;
+    font-weight: 500;
+}
+
+.severity-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.severity-low {
+    color: #6c757d;
+}
+
+.severity-medium {
+    color: #ffc107;
+}
+
+.severity-high {
+    color: #fd7e14;
+}
+
+.severity-critical {
+    color: #dc3545;
+}
+
+.correlation-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.btn-expand,
+.btn-resolve {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-expand {
+    background: #444;
+    color: #fff;
+    flex: 1;
+}
+
+.btn-expand:hover {
+    background: #555;
+}
+
+.btn-resolve {
+    background: #28a745;
+    color: #fff;
+}
+
+.btn-resolve:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.correlation-incidents {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #444;
+}
+
+.correlation-incidents h4 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+.incidents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.incident-mini {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #444;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.incident-mini-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.severity-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.severity-dot.severity-low {
+    background: #6c757d;
+}
+
+.severity-dot.severity-medium {
+    background: #ffc107;
+}
+
+.severity-dot.severity-high {
+    background: #fd7e14;
+}
+
+.severity-dot.severity-critical {
+    background: #dc3545;
+}
+
+.incident-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #fff;
+}
+
+.incident-mini-details {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: #999;
+}

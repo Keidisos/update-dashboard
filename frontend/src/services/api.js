@@ -102,6 +102,35 @@ export const socApi = {
     getHealth: () =>
         api.get('/soc/health')
             .then(res => res.data),
+
+    // Phase 2 endpoints
+    getSchedulerStatus: () =>
+        api.get('/soc/scheduler/status')
+            .then(res => res.data),
+
+    startScheduler: () =>
+        api.post('/soc/scheduler/start')
+            .then(res => res.data),
+
+    stopScheduler: () =>
+        api.post('/soc/scheduler/stop')
+            .then(res => res.data),
+
+    getCorrelations: (limit = 10) =>
+        api.get('/soc/correlations', { params: { limit } })
+            .then(res => res.data.correlations),
+
+    resolveCorrelation: (correlationId, notes) =>
+        api.post(`/soc/correlations/${correlationId}/resolve`, { resolution_notes: notes })
+            .then(res => res.data),
+
+    testDiscord: () =>
+        api.post('/soc/test-discord')
+            .then(res => res.data),
+
+    getTimeline: (hours = 24) =>
+        api.get('/soc/timeline', { params: { hours } })
+            .then(res => res.data.timeline),
 }
 
 export default api
