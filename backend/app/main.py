@@ -18,8 +18,7 @@ from app.services.scheduler_service import get_scheduler
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -33,13 +32,13 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Update Dashboard...")
     await create_db_and_tables()
     logger.info("Database initialized")
-    
+
     # Start auto-update scheduler
     scheduler = get_scheduler()
     scheduler.start()
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Update Dashboard...")
     scheduler.stop()
@@ -87,7 +86,7 @@ async def api_info():
             "hosts": f"{settings.api_v1_prefix}/hosts",
             "containers": f"{settings.api_v1_prefix}/containers",
             "system": f"{settings.api_v1_prefix}/system",
-        }
+        },
     }
 
 
@@ -95,12 +94,12 @@ async def api_info():
 static_path = Path(__file__).parent.parent / "static"
 if static_path.exists():
     app.mount("/assets", StaticFiles(directory=static_path / "assets"), name="assets")
-    
+
     @app.get("/")
     async def serve_frontend():
         """Serve frontend index.html."""
         return FileResponse(static_path / "index.html")
-    
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         """Serve SPA routes."""

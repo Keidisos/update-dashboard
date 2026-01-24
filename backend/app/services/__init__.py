@@ -9,7 +9,7 @@ from app.services.notification_service import NotificationService
 
 __all__ = [
     "DockerService",
-    "SSHService", 
+    "SSHService",
     "RegistryService",
     "NotificationService",
 ]

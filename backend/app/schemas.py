@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 # ============== Host Schemas ==============
 
+
 class ConnectionType(str, Enum):
     SSH = "ssh"
     TCP = "tcp"
@@ -18,14 +19,15 @@ class ConnectionType(str, Enum):
 
 class HostBase(BaseModel):
     """Base host schema."""
+
     name: str = Field(..., min_length=1, max_length=255)
     hostname: str = Field(..., min_length=1, max_length=255)
     connection_type: ConnectionType = ConnectionType.SSH
-    
+
     # SSH
     ssh_port: int = Field(default=22, ge=1, le=65535)
     ssh_user: Optional[str] = None
-    
+
     # Docker TCP
     docker_port: int = Field(default=2376, ge=1, le=65535)
     docker_tls: bool = True
@@ -33,6 +35,7 @@ class HostBase(BaseModel):
 
 class HostCreate(HostBase):
     """Schema for creating a new host."""
+
     ssh_key: Optional[str] = None  # Private key content
     ssh_password: Optional[str] = None
     docker_cert: Optional[str] = None
@@ -40,6 +43,7 @@ class HostCreate(HostBase):
 
 class HostUpdate(BaseModel):
     """Schema for updating a host."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     hostname: Optional[str] = Field(None, min_length=1, max_length=255)
     connection_type: Optional[ConnectionType] = None
@@ -55,8 +59,9 @@ class HostUpdate(BaseModel):
 
 class HostResponse(HostBase):
     """Schema for host response."""
+
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     os_type: Optional[str] = None
     os_version: Optional[str] = None
@@ -69,6 +74,7 @@ class HostResponse(HostBase):
 
 class HostStatus(BaseModel):
     """Host connection status."""
+
     host_id: int
     connected: bool
     docker_version: Optional[str] = None
@@ -77,6 +83,7 @@ class HostStatus(BaseModel):
 
 
 # ============== Container Schemas ==============
+
 
 class ContainerState(str, Enum):
     RUNNING = "running"
@@ -89,6 +96,7 @@ class ContainerState(str, Enum):
 
 class PortMapping(BaseModel):
     """Container port mapping."""
+
     container_port: int
     host_port: Optional[int] = None
     protocol: str = "tcp"
@@ -97,6 +105,7 @@ class PortMapping(BaseModel):
 
 class VolumeMount(BaseModel):
     """Container volume mount."""
+
     source: str
     destination: str
     mode: str = "rw"
@@ -105,6 +114,7 @@ class VolumeMount(BaseModel):
 
 class ContainerInfo(BaseModel):
     """Container information."""
+
     id: str
     name: str
     image: str
@@ -112,7 +122,7 @@ class ContainerInfo(BaseModel):
     state: ContainerState
     status: str  # Human-readable status
     created: datetime
-    
+
     # Configuration
     ports: List[PortMapping] = []
     volumes: List[VolumeMount] = []
@@ -120,7 +130,7 @@ class ContainerInfo(BaseModel):
     networks: List[str] = []
     labels: Dict[str, str] = {}
     restart_policy: str = "no"
-    
+
     # Update status
     update_available: bool = False
     local_digest: Optional[str] = None
@@ -129,12 +139,14 @@ class ContainerInfo(BaseModel):
 
 class ContainerUpdateRequest(BaseModel):
     """Request to update a container."""
+
     container_id: str
     force: bool = False  # Force update even if no new image
 
 
 class ContainerUpdateResult(BaseModel):
     """Result of container update."""
+
     success: bool
     container_id: str
     old_container_id: str
@@ -147,8 +159,10 @@ class ContainerUpdateResult(BaseModel):
 
 # ============== System Update Schemas ==============
 
+
 class PackageInfo(BaseModel):
     """System package information."""
+
     name: str
     current_version: str
     new_version: str
@@ -157,6 +171,7 @@ class PackageInfo(BaseModel):
 
 class SystemUpdateStatus(BaseModel):
     """System update status."""
+
     host_id: int
     os_type: str
     os_version: str
@@ -167,12 +182,14 @@ class SystemUpdateStatus(BaseModel):
 
 class SystemUpdateRequest(BaseModel):
     """Request to perform system update."""
+
     host_id: int
     packages: Optional[List[str]] = None  # None = update all
 
 
 class SystemUpdateResult(BaseModel):
     """Result of system update."""
+
     success: bool
     host_id: int
     packages_updated: List[str] = []
@@ -182,8 +199,10 @@ class SystemUpdateResult(BaseModel):
 
 # ============== Notification Schemas ==============
 
+
 class NotificationPayload(BaseModel):
     """Discord notification payload."""
+
     title: str
     description: str
     color: int = 0x00FF00  # Green by default
